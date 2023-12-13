@@ -36,3 +36,7 @@ textgrid
 pydub # ? None, Manipulate audio, delete
 horology # TODO None, measure time, worth a try
 commonvoice-utils
+fastapi
+streamlit
+websockets
+asyncio
