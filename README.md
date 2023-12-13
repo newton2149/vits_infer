@@ -22,7 +22,7 @@ apt-get install espeak
 
 #### Step 3 (Inference Code)
 ```sh
-python3 client.py
+python3 websocket-server.py
 # open another terminal and run
 python3 test.py
 
