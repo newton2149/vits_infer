@@ -16,8 +16,8 @@ monotonic_align/monotonic_align
 .vscode
 .DS_Store
 
-test
-test*.*
+
+
 cv-corpus-5.1-2020-06-22
 tts_utils
 datasets
