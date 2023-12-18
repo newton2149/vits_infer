@@ -40,3 +40,4 @@ fastapi
 streamlit
 websockets
 asyncio
+uvicorn["standard"]

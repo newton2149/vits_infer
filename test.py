@@ -1,14 +1,21 @@
 import asyncio
 import websockets
+import time
 
 async def send_text():
     async with websockets.connect("ws://localhost:8000/english/ws/text") as websocket:
         text = "This is a test sentence."
+        start = time.time()
         await websocket.send(text)
         audio_data = await websocket.recv()
         # Save audio data to a file
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"Send Text Runtime: {runtime} seconds")
         with open("output_audio.wav", "wb") as audio_file:
             audio_file.write(audio_data)
+
+
         
 async def send_file():
     async with websockets.connect("ws://localhost:8000/english/ws/text/gpu") as websocket:
@@ -36,7 +43,7 @@ async def send_file_cpu():
 
 
 # Test sending text
-# asyncio.get_event_loop().run_until_complete(send_file())
-asyncio.get_event_loop().run_until_complete(send_file_cpu())
+asyncio.get_event_loop().run_until_complete(send_file())
+# asyncio.get_event_loop().run_until_complete(send_file_cpu())
 
 # asyncio.get_event_loop().run_until_complete(send_text())

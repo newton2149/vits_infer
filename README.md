@@ -18,6 +18,8 @@ pip3 install -r requiremnts.txt
 #Install ESpeak Engine
 apt-get install espeak
 
+pip install -f 'https://synesthesiam.github.io/prebuilt-apps/' gruut[fr]
+
 mkdir models
 
 #Add Models to the models directory
