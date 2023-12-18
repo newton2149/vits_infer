@@ -17,6 +17,10 @@ pip3 install -r requiremnts.txt
 
 #Install ESpeak Engine
 apt-get install espeak
+
+mkdir models
+
+#Add Models to the models directory
 ```
 
 
