@@ -18,7 +18,7 @@ async def send_text():
 
         
 async def send_file():
-    async with websockets.connect("ws://localhost:8000/english/ws/text/gpu") as websocket:
+    async with websockets.connect("ws://localhost:8000/english/ws/text/gpu/batch") as websocket:
         file_path = "./test.txt"  # Replace with the path to your text file
         with open(file_path, "r") as file:
             file_content = file.read()
