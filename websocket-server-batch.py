@@ -2,26 +2,20 @@ import io
 import torch
 from fastapi import FastAPI, WebSocket
 import utils
-import commons
 from models import SynthesizerTrn
 from text.symbols import symbols
-from text import text_to_sequence
 
 from text.mlb_fr_symbols import symbols as fr_symbols
-from text.mlb_fr import text_to_sequence as fr_text_to_sequence
 
 from text.vctk_symbols import symbols as vctk_symbols
-from text.vctk import text_to_sequence as vctk_text_to_sequence
 
 from text.rw_symbols import symbols as rw_symbols
-from text.rw import text_to_sequence as rw_text_to_sequence
-from scipy.io.wavfile import write
 import os
 from tqdm import tqdm
 from data import CustomData
 import zipfile
 from torch.utils.data import  DataLoader
-from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu,ENGLISH_CONFIG,ENGLISH_MODEL,KIN_CONFIG,KIN_MODEL,FR_CONFIG,FR_MODEL,VCTK_CONFIG,VCTK_MODEL,eng_hps,vctk_hps,rw_hps,fr_hps
+from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu,ENGLISH_MODEL,KIN_MODEL,FR_MODEL,VCTK_MODEL,eng_hps,vctk_hps,rw_hps,fr_hps
 
 
 
