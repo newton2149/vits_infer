@@ -24,7 +24,7 @@ output = None
 ENGLISH_TXT = 'ws://0.0.0.0:8000/english/ws/text'
 ENGLISH_ZIP = 'ws://localhost:8000/english/ws/zip'
 
-
+o
 
 async def send_text():
     async with websockets.connect("ws://localhost:8000/english/ws/text") as websocket:

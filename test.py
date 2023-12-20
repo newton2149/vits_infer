@@ -40,11 +40,8 @@ async def send_file_gpu():
 
         await websocket.send(f"FILE:{file_content}")
 
-        print("Sent File")
-
         audio_zip_data = await websocket.recv()
 
-        print("Received Audio Zip Data")
 
         with open("audio_files_gpu.zip", "wb") as audio_zip_file:
             audio_zip_file.write(audio_zip_data)
