@@ -1,51 +1,32 @@
-import io
 import torch
 from fastapi import FastAPI, WebSocket
-from text import text_to_sequence
 from models import SynthesizerTrn
 from text.symbols import symbols
-from scipy.io.wavfile import write
 import utils
 from models import SynthesizerTrn
 from text.symbols import symbols
-from text import text_to_sequence
 
 from text.mlb_fr_symbols import symbols as fr_symbols
-from text.mlb_fr import text_to_sequence as fr_text_to_sequence
 
 from text.vctk_symbols import symbols as vctk_symbols
-from text.vctk import text_to_sequence as vctk_text_to_sequence
+
 
 from text.rw_symbols import symbols as rw_symbols
-from text.rw import text_to_sequence as rw_text_to_sequence
 
 
-from scipy.io.wavfile import write
+
 import os
-import commons
 
-SERVER_CONFIG = "./configs/server.json"
+from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu,ENGLISH_MODEL,KIN_MODEL,FR_MODEL,VCTK_MODEL,eng_hps,vctk_hps,rw_hps,fr_hps
+
+
 GPU = torch.cuda.is_available()
 
-ENGLISH_CONFIG = "./configs/ljs_base.json"
-ENGLISH_MODEL = "./models/ljspeech.pth"
 
-KIN_CONFIG = "./configs/rw_kin.json"
-KIN_MODEL = "./models/rw_base.pth"
-
-FR_CONFIG = "./configs/mlb_french.json"
-FR_MODEL = "./models/"
-
-VCTK_CONFIG = "./configs/vctk_base.json"
-VCTK_MODEL = "./models/vctk.pth"
 
 app = FastAPI()
 
 
-eng_hps = utils.get_hparams_from_file(ENGLISH_CONFIG)
-vctk_hps = utils.get_hparams_from_file(VCTK_CONFIG)
-rw_hps = utils.get_hparams_from_file(KIN_CONFIG)
-fr_hps = utils.get_hparams_from_file(FR_CONFIG)
 
 #English -----------------------------------------------------
 if GPU:
@@ -124,7 +105,7 @@ if GPU:
         **vctk_hps.model).cuda()
     _ = vctk_gpu_model.eval()
 
-    _ = utils.load_checkpoint("./models/vctk.pth", vctk_gpu_model, None)
+    _ = utils.load_checkpoint(VCTK_MODEL, vctk_gpu_model, None)
 
 
 
@@ -136,179 +117,11 @@ vctk_cpu_model = SynthesizerTrn(
     **vctk_hps.model).cpu()
 _ = vctk_cpu_model.eval()
 
-_ = utils.load_checkpoint("./models/vctk.pth", vctk_cpu_model, None)
+_ = utils.load_checkpoint(VCTK_MODEL, vctk_cpu_model, None)
 
 
 max_threads = os.cpu_count()
 
-
-def get_text(text, hps):
-    text_norm = text_to_sequence(text, hps.data.text_cleaners)
-    return torch.LongTensor(text_norm)
-
-def get_text_vctk(text, hps):
-    text_norm = vctk_text_to_sequence(text, hps.data.text_cleaners)
-    if hps.data.add_blank:
-        text_norm = commons.intersperse(text_norm, 0)
-    text_norm = torch.LongTensor(text_norm)
-    return text_norm
-
-def get_text_fr(text, hps):
-    text_norm = fr_text_to_sequence(text, hps.data.text_cleaners)
-    if hps.data.add_blank:
-        text_norm = commons.intersperse(text_norm, 0)
-    text_norm = torch.LongTensor(text_norm)
-    return text_norm
-
-def get_text_rw(text, hps):
-    text_norm = rw_text_to_sequence(text, hps.data.text_cleaners)
-    if hps.data.add_blank:
-        text_norm = commons.intersperse(text_norm, 0)
-    text_norm = torch.LongTensor(text_norm)
-    return text_norm
-
-#Audio -----------------------------------------------------------------------------------
-
- 
-
-
-
-def get_audio(stn_tst,net_g,hps):
-    with torch.no_grad():
-        x_tst = stn_tst.cuda().unsqueeze(0)
-        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
-        audio = net_g.infer(
-            x_tst,
-            x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
-        )[0][0, 0].data.cpu().float().numpy()
-
-    # Save audio to a file (temporary here, you can modify as needed)
-    audio_file = io.BytesIO()
-    write(audio_file, hps.data.sampling_rate, audio)
-    audio_file.seek(0)
-    return audio_file.read()
-
-def get_audio_cpu(stn_tst,net_g,hps):
-    with torch.no_grad():
-        x_tst = stn_tst.cpu().unsqueeze(0)
-        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
-        audio = net_g.infer(
-            x_tst,
-            x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
-        )[0][0, 0].data.cpu().float().numpy()
-
-    audio_file = io.BytesIO()
-    write(audio_file, hps.data.sampling_rate, audio)
-    audio_file.seek(0)
-    return audio_file.read()
-
-#French -----------------------------------------------------
-# def fr_get_audio_gpu(stn_tst,net_g,hps):
-#     with torch.no_grad():
-#         x_tst = stn_tst.cuda().unsqueeze(0)
-#         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
-#         audio = fr_gpu.infer(
-#             x_tst,
-#             x_tst_lengths,
-#             noise_scale=0.667,
-#             noise_scale_w=0.8,
-#             length_scale=1,
-#         )[0][0, 0].data.cpu().float().numpy()
-
-#     # Save audio to a file (temporary here, you can modify as needed)
-#     audio_file = io.BytesIO()
-#     write(audio_file, hps.data.sampling_rate, audio)
-#     audio_file.seek(0)
-#     return audio_file.read()
-
-# def fr_get_audio_cpu(stn_tst,net_g,hps):
-#     with torch.no_grad():
-#         x_tst = stn_tst.cpu().unsqueeze(0)
-#         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
-#         audio = fr_cpu.infer(
-#             x_tst,
-#             x_tst_lengths,
-#             noise_scale=0.667,
-#             noise_scale_w=0.8,
-#             length_scale=1,
-#         )[0][0, 0].data.cpu().float().numpy()
-
-#     audio_file = io.BytesIO()
-#     write(audio_file, hps.data.sampling_rate, audio)
-#     audio_file.seek(0)
-#     return audio_file.read()
-
-
-#Kinyarwanda -----------------------------------------------------
-
-def rw_get_audio_gpu(stn_tst,rw_gpu,hps):
-    with torch.no_grad():
-        x_tst = stn_tst.cuda().unsqueeze(0)
-        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
-        audio = rw_gpu.infer(
-            x_tst,
-            x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
-        )[0][0, 0].data.cpu().float().numpy()
-
-    # Save audio to a file (temporary here, you can modify as needed)
-    audio_file = io.BytesIO()
-    write(audio_file, hps.data.sampling_rate, audio)
-    audio_file.seek(0)
-    return audio_file.read()
-
-def rw_get_audio_cpu(stn_tst,rw_cpu,hps):
-    with torch.no_grad():
-        x_tst = stn_tst.cpu().unsqueeze(0)
-        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
-        audio = rw_cpu.infer(
-            x_tst,
-            x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
-        )[0][0, 0].data.cpu().float().numpy()
-
-    audio_file = io.BytesIO()
-    write(audio_file, hps.data.sampling_rate, audio)
-    audio_file.seek(0)
-    return audio_file.read()
-
-#VCTK ---------------------------------------------------------------------------
-
-def vctk_gpu(stn_tst,vctk_gpu_model,hps):
-
-    with torch.no_grad():
-        x_tst = stn_tst.cuda().unsqueeze(0)
-        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
-        sid = torch.LongTensor([4]).cuda()
-        audio = vctk_gpu_model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8, length_scale=1)[0][0,0].data.cpu().float().numpy()
-
-    audio_file = io.BytesIO()
-    write(audio_file, hps.data.sampling_rate, audio)
-    audio_file.seek(0)
-    return audio_file.read()
-
-def vctk_cpu(stn_tst,vctk_cpu_model,hps):
-
-    with torch.no_grad():
-        x_tst = stn_tst.cpu().unsqueeze(0)
-        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
-        sid = torch.LongTensor([4]).cuda()
-        audio = vctk_cpu_model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667, noise_scale_w=0.8, length_scale=1)[0][0,0].data.cpu().float().numpy()
-        
-    audio_file = io.BytesIO()
-    write(audio_file, hps.data.sampling_rate, audio)
-    audio_file.seek(0)
-    return audio_file.read()
 
 
 
@@ -374,7 +187,7 @@ async def text_to_audio(websocket: WebSocket):
 
             text = data
 
-            audio_data = vctk_gpu(get_text_vctk(text),vctk_gpu_model,vctk_hps)
+            audio_data = vctk_gpu(get_text_vctk(text,vctk_hps),vctk_gpu_model,vctk_hps)
             await websocket.send_bytes(audio_data)
 
             break
@@ -399,7 +212,7 @@ async def text_to_audio(websocket: WebSocket):
 
             text = data
 
-            audio_data = vctk_cpu(get_text_vctk(text),vctk_gpu_model,vctk_hps)
+            audio_data = vctk_cpu(get_text_vctk(text,vctk_hps),vctk_cpu_model,vctk_hps)
             await websocket.send_bytes(audio_data)
 
             break
