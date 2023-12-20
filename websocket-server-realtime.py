@@ -176,8 +176,8 @@ async def text_to_audio(websocket: WebSocket):
         await websocket.close()
 
 
-@app.websocket("/english/vctk/gpu")
-async def text_to_audio(websocket: WebSocket):
+@app.websocket("/english/vctk/gpu/{spk}/{noise_scale}")
+async def text_to_audio(websocket: WebSocket,spk:int = 4,noise_scale:float=0.667):
     await websocket.accept()
     try:
         while True:
@@ -187,7 +187,7 @@ async def text_to_audio(websocket: WebSocket):
 
             text = data
 
-            audio_data = vctk_gpu(get_text_vctk(text,vctk_hps),vctk_gpu_model,vctk_hps)
+            audio_data = vctk_gpu(get_text_vctk(text,vctk_hps),vctk_gpu_model,vctk_hps,spk,noise_scale)
             await websocket.send_bytes(audio_data)
 
             break
@@ -202,8 +202,8 @@ async def text_to_audio(websocket: WebSocket):
 
 
 
-@app.websocket("/english/vctk/cpu")
-async def text_to_audio(websocket: WebSocket):
+@app.websocket("/english/vctk/cpu/{spk}/{noise_scale}")
+async def text_to_audio(websocket: WebSocket,spk:int = 4,noise_scale:float=0.667):
     await websocket.accept()
     try:
         while True:
@@ -212,7 +212,7 @@ async def text_to_audio(websocket: WebSocket):
 
             text = data
 
-            audio_data = vctk_cpu(get_text_vctk(text,vctk_hps),vctk_cpu_model,vctk_hps)
+            audio_data = vctk_cpu(get_text_vctk(text,vctk_hps),vctk_cpu_model,vctk_hps,spk,noise_scale)
             await websocket.send_bytes(audio_data)
 
             break
