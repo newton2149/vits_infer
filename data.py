@@ -15,7 +15,7 @@ class CustomData(Dataset):
         text_norm = text_to_sequence(text, hps.data.text_cleaners)
         if hps.data.add_blank:
             text_norm = commons.intersperse(text_norm, 0)
-        max_length = 30  
+        max_length = len(max(self.lines, key=len))
         if len(text_norm) < max_length:
             text_norm += [0] * (max_length - len(text_norm))
         elif len(text_norm) > max_length:
