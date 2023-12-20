@@ -17,22 +17,3 @@ symbols = [_pad] + list(_punctuation) + list(_letters) + list(_letters_ipa) + li
 # Special symbol ids
 SPACE_ID = symbols.index(" ")
 
-
-
-# k_pad = "_"
-# k_punctuation = ';:,.!|?¡¿—…"«»“” '
-# k_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-# k_letters_ipa = "ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘'̩'ᵻ'͡'"
-
-
-# k_kinyarwanda_letters = "ɑɛɪɔʌŋʀʁ"
-# k_kinyarwanda_pronunciation = "áéíóúɑɛɪɔʌ"
-
-
-# k_data_letters_ipa = "̃"
-
-# # # Export all symbols:
-# k_symbols = [_pad] + list(k_punctuation) + list(k_letters) + list(k_letters_ipa) + list(k_data_letters_ipa) + list(k_kinyarwanda_letters) + list(k_kinyarwanda_pronunciation)
-
-# # # Special symbol ids
-# k_SPACE_ID = symbols.index(" ")

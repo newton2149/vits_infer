@@ -1,0 +1,14 @@
+{
+  "config": {
+    "ENGLISH_CONFIG": "./configs/ljs_base.json",
+    "FRENCH_CONFIG": "./configs/mlb_french.json",
+    "VCTK_CONFIG": "./configs/vctk_base.json",
+    "KIN_CONFIG": "./configs/rw_kin.json"
+  },
+  "model": {
+    "ENGLISH_MODEL": "./models/ljspeech.pth",
+    "KIN_MODEL": "./models/",
+    "FR_MODEL": "./models/",
+    "VCTK_MODEL": "./models/"
+  }
+}
