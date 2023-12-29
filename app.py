@@ -1,152 +1,180 @@
 import streamlit as st
-import IPython.display as ipd
-import os
-import torch
-from torch import nn
-from torch.nn import functional as F
-import commons
-import utils
-from models import SynthesizerTrn
-from text.symbols import symbols
-from text import text_to_sequence
-from scipy.io.wavfile import write
 import asyncio
 import websockets
+import time
 
 
-
-
-CONFIG_DIR = "configs"
-config = ""
 audio = None
-output = None
 
-ENGLISH_TXT = 'ws://0.0.0.0:8000/english/ws/text'
-ENGLISH_ZIP = 'ws://localhost:8000/english/ws/zip'
+async def eng_send_text_real_cpu(text):
+    async with websockets.connect("ws://localhost:8000/english/ljspeech/cpu",timeout=10) as websocket:
 
-o
-
-async def send_text():
-    async with websockets.connect("ws://localhost:8000/english/ws/text") as websocket:
-        text = "This is a test sentence."
+        start = time.time()
         await websocket.send(text)
         audio_data = await websocket.recv()
-        # Save audio data to a file
-        with open("output_audio.wav", "wb") as audio_file:
-            audio_file.write(audio_data)
-        
-async def send_file(file_content):
-    async with websockets.connect("ws://localhost:8000/english/ws/text") as websocket:
-        # file_path = "./test.txt"  # Replace with the path to your text file
-        # with open(file_path, "r") as file:
-        #     file_content = file.read()
-        await websocket.send(f"FILE:{file_content}")
-        audio_zip_data = await websocket.recv()
-        # Save audio ZIP data to a file
-        with open("audio_files.zip", "wb") as audio_zip_file:
-            audio_zip_file.write(audio_zip_data)
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"LJSpeech CPU Text Runtime: {runtime} seconds")
+        return audio_data
 
+async def eng_send_text_real_gpu(text):
+    async with websockets.connect("ws://localhost:8000/english/ljspeech/gpu") as websocket:
 
+        start = time.time()
+        await websocket.send(text)
+        audio_data = await websocket.recv()
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"LJSpeech GPU Text Runtime: {runtime} seconds")
+        return audio_data
 
+async def vctk_send_text_real_cpu(text,spk,noise_scale):
+    async with websockets.connect(f"ws://localhost:8000/english/vctk/cpu/{spk}/{noise_scale}",timeout=10) as websocket:
 
-def get_text(text, hps):
-    text_norm = text_to_sequence(text, hps.data.text_cleaners)
-    
-    if hps.data.add_blank:
-        text_norm = commons.intersperse(text_norm, 0)
-    text_norm = torch.LongTensor(text_norm)
-    return text_norm
+        start = time.time()
+        await websocket.send(text)
+        audio_data = await websocket.recv()
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"VCTK CPU Text Runtime: {runtime} seconds")
+        return audio_data
 
-
-
-
-
-
-
-
-def inference(text):
-    return asyncio.run(send_text_and_receive_audio(text))
-
- 
-
-def inference_file():
-
-
-   pass
-
-
-
-
-st.set_page_config(layout='wide', page_title='VITS Testing Dashboard')
-
-MODEL_PATH = '/home/navneeth/EgoPro/dnn/vits_kinyarwanda/models'
-
-models = ['English','Kinyarwanda']
-
-st.write('''
-# VITS Testing Dashboard''')
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.write('''
-    ### Input
-    ''')
-
-    row, col = st.columns(2)
-
-    dropdown = st.selectbox('Select Model', models)
-    if dropdown == 'English':
-        config = 'ljs_base.json'
-        model = '/home/navneeth/EgoPro/dnn/vits_infer/models/ljspeech.pth'
-
-    elif dropdown == 'Kinyarwanda':
-        config = 'rw_kin.json'
-        model = '/home/navneeth/EgoPro/dnn/vits_infer/models/ljspeech.pth'
-
-
-    
-
-
-    
-
-
-    text = st.text_area(label = 'Text',help = 'Enter the name of the test')
-
-
-    if st.button('Inference'):
-        audio = inference(text)
-
-with col2:
-    st.write('### Batch Inference')
-    uploaded_files = st.file_uploader("Choose a Text File")
-
-    if uploaded_files is not None:
-        bytes_data = uploaded_files.getvalue()
-        st.write(bytes_data)
+async def vctk_send_text_real_gpu(text,spk,noise_scale):
+    async with websockets.connect(f"ws://localhost:8000/english/vctk/gpu/{spk}/{noise_scale}") as websocket:
+        start = time.time()
+        await websocket.send(text)
+        audio_data = await websocket.recv()
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"VCTK CPU Text Runtime: {runtime} seconds")
+        return audio_data
             
-        print(uploaded_files)
-    if st.button('Inference Batch'):
-        output = send_file(bytes_data)
+async def rw_send_text_real_cpu(text):
+    async with websockets.connect("ws://localhost:8000/rw/cpu",timeout=10) as websocket:
 
+        start = time.time()
+        await websocket.send(text)
+        audio_data = await websocket.recv()
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"Kinyarwanda CPU Text Runtime: {runtime} seconds")
+        return audio_data
+
+async def rw_send_text_real_gpu(text):
+    async with websockets.connect("ws://localhost:8000/rw/gpu") as websocket:
+
+        start = time.time()
+        await websocket.send(text)
+        audio_data = await websocket.recv()
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"Kinyarwanda GPU Text Runtime: {runtime} seconds")
+        return audio_data
+
+
+def getInference(model,device):
+    
+    if model == 'English' and device == 'CPU':
+        return eng_send_text_real_cpu
+    
+    if model == 'English' and device == 'GPU':
+        return eng_send_text_real_gpu
+    
+    
+    
+    if model == 'Kinyarwanda' and device == 'CPU':
+        return rw_send_text_real_cpu
+    
+    if model == 'Kinyarwanda' and device == 'GPU':
+        return rw_send_text_real_gpu
+    
+    
+
+
+
+
+
+def main():
+    
+    audio = None
+
+    st.set_page_config(layout='wide', page_title='VITS Testing Dashboard')
+
+    models = ['English','Kinyarwanda','VCTK','French']
+    de = ['CPU','GPU']
+
+
+    st.write('''
+    # VITS Testing Dashboard''')
+
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        
+        st.write('''
+        ### Input
+        ''')
+
+        row, col = st.columns(2)
+
+        dropdown = st.selectbox('Select Model', models)
+        device = st.selectbox('Select Device', de)  
+        
+        if dropdown == 'VCTK':
+            
+            spk = st.number_input(label = 'Speaker ID',help = 'Enter the speaker ID',min_value=0,max_value=108,value=0,step=1)  
+            noise_scale = st.number_input(label = 'Noise Scale',help = 'Enter the noise scale',min_value=0.0,max_value=1.0,value=0.667,step=0.1)          
+
+
+        text = st.text_area(label = 'Text',help = 'Enter the name of the test')
+
+
+        if st.button('Inference'):
+            
+            if dropdown == 'VCTK' and device == 'CPU':
+                audio = asyncio.run(vctk_send_text_real_cpu(text,spk,noise_scale))
+            elif dropdown == 'VCTK' and device == 'GPU':
+                audio = asyncio.run(vctk_send_text_real_gpu(text,spk,noise_scale))
+            
+            else:
+                audio = asyncio.run(getInference(dropdown,device)(text))
+            
+        
+        
+
+    # with col2:
+    #     st.write('### Batch Inference')
+    #     uploaded_files = st.file_uploader("Choose a Text File")
+
+    #     if uploaded_files is not None:
+    #         bytes_data = uploaded_files.getvalue()
+    #         st.write(bytes_data)
+                
+    #         print(uploaded_files)
+    #     if st.button('Inference Batch'):
+    #         output = send_file(bytes_data)
+
+
+        
+    #     if output is not None:
+    #         st.download_button(label='Download Audio',data=audio,file_name='audio.mp3',mime='audio/mp3')
+        
+
+        
+
+
+    with col2:
+        st.write('''
+        ### Output
+        ''')
+
+
+        st.audio(audio,format='audio/mp3',sample_rate=22050)
+    
 
     
-    if output is not None:
-        st.download_button(label='Download Audio',data=audio,file_name='audio.mp3',mime='audio/mp3')
-    
-
-    
 
 
-
-st.write('''
-### Output
-''')
-
-
-st.audio(audio,format='audio/mp3',sample_rate=22050)
-    
-
-    
-
-
+if __name__ == "__main__":
+    main()

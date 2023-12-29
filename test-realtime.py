@@ -12,8 +12,10 @@ async def eng_send_text_real_cpu():
         end_time = time.time()
         runtime = end_time - start
         print(f"LJSpeech CPU Text Runtime: {runtime} seconds")
-        with open("eng_text_real_cpu.wav", "wb") as audio_file:
-            audio_file.write(audio_data)
+        # with open("eng_text_real_cpu.wav", "wb") as audio_file:
+        #     audio_file.write(audio_data)
+        
+        return audio_data
 
 async def eng_send_text_real_gpu():
     async with websockets.connect("ws://localhost:8000/english/ljspeech/gpu") as websocket:
@@ -109,14 +111,16 @@ async def rw_send_text_real_gpu():
 
 
 
-asyncio.get_event_loop().run_until_complete(eng_send_text_real_cpu())
-asyncio.get_event_loop().run_until_complete(eng_send_text_real_gpu())
-asyncio.get_event_loop().run_until_complete(vctk_send_text_real_cpu())
-asyncio.get_event_loop().run_until_complete(vctk_send_text_real_gpu())
-# asyncio.get_event_loop().run_until_complete(fr_send_text_real_cpu())
-# asyncio.get_event_loop().run_until_complete(fr_send_text_real_gpu())
-asyncio.get_event_loop().run_until_complete(rw_send_text_real_cpu())
-asyncio.get_event_loop().run_until_complete(rw_send_text_real_gpu())
+audio = asyncio.get_event_loop().run_until_complete(eng_send_text_real_cpu())
+with open("eng_text_real_gpu.wav", "wb") as audio_file:
+            audio_file.write(audio)
+# asyncio.get_event_loop().run_until_complete(eng_send_text_real_gpu())
+# asyncio.get_event_loop().run_until_complete(vctk_send_text_real_cpu())
+# asyncio.get_event_loop().run_until_complete(vctk_send_text_real_gpu())
+# # asyncio.get_event_loop().run_until_complete(fr_send_text_real_cpu())
+# # asyncio.get_event_loop().run_until_complete(fr_send_text_real_gpu())
+# asyncio.get_event_loop().run_until_complete(rw_send_text_real_cpu())
+# asyncio.get_event_loop().run_until_complete(rw_send_text_real_gpu())
 
 
 
