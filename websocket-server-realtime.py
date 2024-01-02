@@ -236,7 +236,7 @@ async def text_to_audio(websocket: WebSocket,spk:int = 4,noise_scale:float=0.667
 
 #             text = data
 
-#             audio_data = vctk_audio_gpu(get_text_fr(text, eng_hps),net_g_gpu,eng_hps)
+#             audio_data = fr_gpu(get_text_fr(text, eng_hps),net_g_gpu,eng_hps)
 #             await websocket.send_bytes(audio_data)
 
 #             break
@@ -261,7 +261,7 @@ async def text_to_audio(websocket: WebSocket,spk:int = 4,noise_scale:float=0.667
 
 #             text = data
 
-#             audio_data = vctk_audio_cpu(get_text_fr(text, eng_hps),net_g,eng_hps)
+#             audio_data = fr_cpu(get_text_fr(text, eng_hps),net_g,eng_hps)
 #             await websocket.send_bytes(audio_data)
 
 #             break

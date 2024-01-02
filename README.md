@@ -26,11 +26,14 @@ mkdir models
 ```
 
 
-#### Step 3 (Inference Code)
+#### Realtime (Inference Code )
 ```sh
-python3 websocket-server.py
+python3 websocket-server-realtime.py
 # open another terminal and run
-python3 test.py
+python3 test-realtime.py 
+
+#Dashboard
+python3 app.py
 
 ```
 ##### You Can obtain either the audio file or a audio_files.zip if you send a text file
