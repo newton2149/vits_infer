@@ -25,7 +25,7 @@ KIN_CONFIG = "./configs/rw_kin.json"
 KIN_MODEL = "./models/rw_base.pth"
 
 FR_CONFIG = "./configs/mlb_french.json"
-FR_MODEL = "./models/"
+FR_MODEL = "./models/french.pth"
 
 VCTK_CONFIG = "./configs/vctk_base.json"
 VCTK_MODEL = "./models/vctk.pth"
@@ -103,40 +103,40 @@ def get_audio_cpu(stn_tst,net_g,hps):
     return audio_file.read()
 
 #French -----------------------------------------------------
-# def fr_get_audio_gpu(stn_tst,net_g,hps):
-#     with torch.no_grad():
-#         x_tst = stn_tst.cuda().unsqueeze(0)
-#         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
-#         audio = fr_gpu.infer(
-#             x_tst,
-#             x_tst_lengths,
-#             noise_scale=0.667,
-#             noise_scale_w=0.8,
-#             length_scale=1,
-#         )[0][0, 0].data.cpu().float().numpy()
+def fr_get_audio_gpu(stn_tst,fr_gpu,hps):
+    with torch.no_grad():
+        x_tst = stn_tst.cuda().unsqueeze(0)
+        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
+        audio = fr_gpu.infer(
+            x_tst,
+            x_tst_lengths,
+            noise_scale=0.667,
+            noise_scale_w=0.8,
+            length_scale=1,
+        )[0][0, 0].data.cpu().float().numpy()
 
-#     # Save audio to a file (temporary here, you can modify as needed)
-#     audio_file = io.BytesIO()
-#     write(audio_file, hps.data.sampling_rate, audio)
-#     audio_file.seek(0)
-#     return audio_file.read()
+    # Save audio to a file (temporary here, you can modify as needed)
+    audio_file = io.BytesIO()
+    write(audio_file, hps.data.sampling_rate, audio)
+    audio_file.seek(0)
+    return audio_file.read()
 
-# def fr_get_audio_cpu(stn_tst,net_g,hps):
-#     with torch.no_grad():
-#         x_tst = stn_tst.cpu().unsqueeze(0)
-#         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
-#         audio = fr_cpu.infer(
-#             x_tst,
-#             x_tst_lengths,
-#             noise_scale=0.667,
-#             noise_scale_w=0.8,
-#             length_scale=1,
-#         )[0][0, 0].data.cpu().float().numpy()
+def fr_get_audio_cpu(stn_tst,fr_cpu,hps):
+    with torch.no_grad():
+        x_tst = stn_tst.cpu().unsqueeze(0)
+        x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
+        audio = fr_cpu.infer(
+            x_tst,
+            x_tst_lengths,
+            noise_scale=0.667,
+            noise_scale_w=0.8,
+            length_scale=1,
+        )[0][0, 0].data.cpu().float().numpy()
 
-#     audio_file = io.BytesIO()
-#     write(audio_file, hps.data.sampling_rate, audio)
-#     audio_file.seek(0)
-#     return audio_file.read()
+    audio_file = io.BytesIO()
+    write(audio_file, hps.data.sampling_rate, audio)
+    audio_file.seek(0)
+    return audio_file.read()
 
 
 #Kinyarwanda -----------------------------------------------------

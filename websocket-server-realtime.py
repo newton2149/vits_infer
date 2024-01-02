@@ -14,21 +14,18 @@ from text.vctk_symbols import symbols as vctk_symbols
 from text.rw_symbols import symbols as rw_symbols
 
 
-
 import os
 
-from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu,ENGLISH_MODEL,KIN_MODEL,FR_MODEL,VCTK_MODEL,eng_hps,vctk_hps,rw_hps,fr_hps
+from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu, ENGLISH_MODEL, KIN_MODEL, FR_MODEL, VCTK_MODEL, eng_hps, vctk_hps, rw_hps, fr_hps, fr_get_audio_gpu, fr_get_audio_cpu
 
 
 GPU = torch.cuda.is_available()
 
 
-
 app = FastAPI()
 
 
-
-#English -----------------------------------------------------
+# English -----------------------------------------------------
 if GPU:
     net_g_gpu = SynthesizerTrn(
         len(symbols),
@@ -40,7 +37,6 @@ if GPU:
     _ = utils.load_checkpoint(ENGLISH_MODEL, net_g_gpu, None)
 
 
-
 net_g = SynthesizerTrn(
     len(symbols),
     eng_hps.data.filter_length // 2 + 1,
@@ -50,28 +46,28 @@ net_g = SynthesizerTrn(
 _ = net_g.eval()
 _ = utils.load_checkpoint(ENGLISH_MODEL, net_g, None)
 
-#French -----------------------------------------------------
+# French -----------------------------------------------------
 
-# if GPU:
-#     fr_gpu = SynthesizerTrn(
-#         len(fr_symbols),
-#         fr_hps.data.filter_length // 2 + 1,
-#         fr_hps.train.segment_size // fr_hps.data.hop_length,
-#         **fr_hps.model
-#     ).cuda()
-#     _ = fr_gpu.eval()
-#     _ = utils.load_checkpoint(FR_MODEL, fr_gpu, None)
+if GPU:
+    fr_gpu = SynthesizerTrn(
+        len(fr_symbols),
+        fr_hps.data.filter_length // 2 + 1,
+        fr_hps.train.segment_size // fr_hps.data.hop_length,
+        **fr_hps.model
+    ).cuda()
+    _ = fr_gpu.eval()
+    _ = utils.load_checkpoint(FR_MODEL, fr_gpu, None)
 
-# fr_cpu = SynthesizerTrn(
-#     len(fr_symbols),
-#     fr_hps.data.filter_length // 2 + 1,
-#     fr_hps.train.segment_size // fr_hps.data.hop_length,
-#     **fr_hps.model
-# ).cpu()
-# _ = net_g.eval()
-# _ = utils.load_checkpoint(FR_MODEL, fr_cpu, None)
+fr_cpu = SynthesizerTrn(
+    len(fr_symbols),
+    fr_hps.data.filter_length // 2 + 1,
+    fr_hps.train.segment_size // fr_hps.data.hop_length,
+    **fr_hps.model
+).cpu()
+_ = net_g.eval()
+_ = utils.load_checkpoint(FR_MODEL, fr_cpu, None)
 
-#Kinyarwanda -----------------------------------------------------
+# Kinyarwanda -----------------------------------------------------
 
 if GPU:
     rw_gpu = SynthesizerTrn(
@@ -93,8 +89,7 @@ _ = rw_cpu.eval()
 _ = utils.load_checkpoint(KIN_MODEL, rw_cpu, None)
 
 
-
-#VCTK -----------------------------------------------------
+# VCTK -----------------------------------------------------
 
 if GPU:
     vctk_gpu_model = SynthesizerTrn(
@@ -106,7 +101,6 @@ if GPU:
     _ = vctk_gpu_model.eval()
 
     _ = utils.load_checkpoint(VCTK_MODEL, vctk_gpu_model, None)
-
 
 
 vctk_cpu_model = SynthesizerTrn(
@@ -123,35 +117,23 @@ _ = utils.load_checkpoint(VCTK_MODEL, vctk_cpu_model, None)
 max_threads = os.cpu_count()
 
 
-
-
-
-
-
 @app.websocket("/english/ljspeech/gpu")
 async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
             data = await websocket.receive_text()
-            
-                        
 
             text = data
 
-            audio_data = get_audio(get_text(text, eng_hps),net_g_gpu,eng_hps)
+            audio_data = get_audio(get_text(text, eng_hps), net_g_gpu, eng_hps)
             await websocket.send_bytes(audio_data)
 
             break
 
-        
-        
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()
-
-
-
 
 
 @app.websocket("/english/ljspeech/cpu")
@@ -159,118 +141,99 @@ async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            data = await websocket.receive_text()        
-                        
+            data = await websocket.receive_text()
 
             text = data
 
-            audio_data = get_audio_cpu(get_text(text, eng_hps),net_g,eng_hps)
+            audio_data = get_audio_cpu(get_text(text, eng_hps), net_g, eng_hps)
             await websocket.send_bytes(audio_data)
 
             break
 
-        
-        
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()
 
 
 @app.websocket("/english/vctk/gpu/{spk}/{noise_scale}")
-async def text_to_audio(websocket: WebSocket,spk:int = 4,noise_scale:float=0.667):
+async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float = 0.667):
     await websocket.accept()
     try:
         while True:
             data = await websocket.receive_text()
-            
-                        
 
             text = data
 
-            audio_data = vctk_gpu(get_text_vctk(text,vctk_hps),vctk_gpu_model,vctk_hps,spk,noise_scale)
+            audio_data = vctk_gpu(get_text_vctk(
+                text, vctk_hps), vctk_gpu_model, vctk_hps, spk, noise_scale)
             await websocket.send_bytes(audio_data)
 
             break
 
-        
-        
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()
-
-
-
 
 
 @app.websocket("/english/vctk/cpu/{spk}/{noise_scale}")
-async def text_to_audio(websocket: WebSocket,spk:int = 4,noise_scale:float=0.667):
+async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float = 0.667):
     await websocket.accept()
     try:
         while True:
-            data = await websocket.receive_text()        
-                        
+            data = await websocket.receive_text()
 
             text = data
 
-            audio_data = vctk_cpu(get_text_vctk(text,vctk_hps),vctk_cpu_model,vctk_hps,spk,noise_scale)
+            audio_data = vctk_cpu(get_text_vctk(
+                text, vctk_hps), vctk_cpu_model, vctk_hps, spk, noise_scale)
             await websocket.send_bytes(audio_data)
 
             break
 
-        
-        
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()
 
 
+@app.websocket("/french/gpu")
+async def text_to_audio(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
 
-# @app.websocket("/french/gpu")
-# async def text_to_audio(websocket: WebSocket):
-#     await websocket.accept()
-#     try:
-#         while True:
-#             data = await websocket.receive_text()
-            
-                        
+            text = data
 
-#             text = data
+            audio_data = fr_get_audio_gpu(
+                get_text_fr(text, fr_hps), fr_gpu, fr_hps)
+            await websocket.send_bytes(audio_data)
 
-#             audio_data = fr_gpu(get_text_fr(text, eng_hps),net_g_gpu,eng_hps)
-#             await websocket.send_bytes(audio_data)
+            break
 
-#             break
-
-        
-        
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         await websocket.close()
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close()
 
 
+@app.websocket("/french/cpu")
+async def text_to_audio(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
 
+            text = data
 
+            audio_data = fr_get_audio_cpu(
+                get_text_fr(text, fr_hps), fr_cpu, fr_hps)
+            await websocket.send_bytes(audio_data)
 
-# @app.websocket("/french/cpu")
-# async def text_to_audio(websocket: WebSocket):
-#     await websocket.accept()
-#     try:
-#         while True:
-#             data = await websocket.receive_text()        
-                        
+            break
 
-#             text = data
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close()
 
-#             audio_data = fr_cpu(get_text_fr(text, eng_hps),net_g,eng_hps)
-#             await websocket.send_bytes(audio_data)
-
-#             break
-
-        
-        
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         await websocket.close()
 
 @app.websocket("/rw/gpu")
 async def text_to_audio(websocket: WebSocket):
@@ -278,24 +241,18 @@ async def text_to_audio(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            
-                        
 
             text = data
 
-            audio_data = rw_get_audio_gpu(get_text_rw(text, rw_hps),rw_gpu,rw_hps)
+            audio_data = rw_get_audio_gpu(
+                get_text_rw(text, rw_hps), rw_gpu, rw_hps)
             await websocket.send_bytes(audio_data)
 
             break
 
-        
-        
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()
-
-
-
 
 
 @app.websocket("/rw/cpu")
@@ -303,18 +260,16 @@ async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            data = await websocket.receive_text()        
-                        
+            data = await websocket.receive_text()
 
             text = data
 
-            audio_data = rw_get_audio_cpu(get_text_rw(text, rw_hps),rw_cpu,rw_hps)
+            audio_data = rw_get_audio_cpu(
+                get_text_rw(text, rw_hps), rw_cpu, rw_hps)
             await websocket.send_bytes(audio_data)
 
             break
 
-        
-        
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()

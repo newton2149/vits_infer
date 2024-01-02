@@ -17,6 +17,28 @@ async def eng_send_text_real_cpu(text):
         print(f"LJSpeech CPU Text Runtime: {runtime} seconds")
         return audio_data
 
+async def fr_send_text_real_gpu(text):
+    async with websockets.connect("ws://localhost:8000/french/gpu") as websocket:
+
+        start = time.time()
+        await websocket.send(text)
+        audio_data = await websocket.recv()
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"MLB GPU Text Runtime: {runtime} seconds")
+        return audio_data
+    
+async def fre_send_text_real_cpu(text):
+    async with websockets.connect("ws://localhost:8000/french/cpu",timeout=10) as websocket:
+
+        start = time.time()
+        await websocket.send(text)
+        audio_data = await websocket.recv()
+        end_time = time.time()
+        runtime = end_time - start
+        print(f"MLB CPU Text Runtime: {runtime} seconds")
+        return audio_data
+
 async def eng_send_text_real_gpu(text):
     async with websockets.connect("ws://localhost:8000/english/ljspeech/gpu") as websocket:
 
@@ -27,7 +49,6 @@ async def eng_send_text_real_gpu(text):
         runtime = end_time - start
         print(f"LJSpeech GPU Text Runtime: {runtime} seconds")
         return audio_data
-
 async def vctk_send_text_real_cpu(text,spk,noise_scale):
     async with websockets.connect(f"ws://localhost:8000/english/vctk/cpu/{spk}/{noise_scale}",timeout=10) as websocket:
 
@@ -79,6 +100,12 @@ def getInference(model,device):
     
     if model == 'English' and device == 'GPU':
         return eng_send_text_real_gpu
+    
+    if model == 'French' and device == 'CPU':
+        return fre_send_text_real_cpu
+    
+    if model == 'French' and device == 'GPU':
+        return fr_send_text_real_gpu
     
     
     
