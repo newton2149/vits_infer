@@ -22,7 +22,7 @@ class CustomData(Dataset):
 
         
     def get_text_batch(self, text, hps,lang):
-        text_norm = switch[lang](text, hps.data.text_cleaners)
+        text_norm = switch[lang](text, hps)
         if hps.data.add_blank:
             text_norm = commons.intersperse(text_norm, 0)
         max_length = len(max(self.lines, key=len))+20

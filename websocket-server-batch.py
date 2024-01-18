@@ -21,19 +21,20 @@ from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_a
 
 GPU = torch.cuda.is_available()
 
-def extract_zip(zip_file_path, extract_to):
+def extract_zip(zip_file_path, extract_to='inference_db'):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+
+        os.makedirs(extract_to, exist_ok=True)
         zip_ref.extractall(extract_to)
 
-def read_text_files(extract_to):
-    for root, dirs, files in os.walk(extract_to):
-        for file in files:
-            if file.endswith('.txt'):
-                file_path = os.path.join(root, file)
-                with open(file_path, 'r', encoding='utf-8') as text_file:
-                    content = text_file.readlines()
-                    return content
+        return os.path.join(extract_to, zip_ref.namelist()[0])
 
+
+def read_text_files(extract_to):
+    for file in os.listdir(extract_to):
+        with open(os.path.join(extract_to, file), 'r') as f:
+            file_lines = f.readlines()
+            return file_lines
 
 
 app = FastAPI()
@@ -149,11 +150,13 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
             #get zip file
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")          
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)          
                     
             
 
@@ -168,7 +171,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = get_audio(stn_tst,net_g_gpu,eng_hps)
                     audio_files.append(audio_data)                
 
-            websocket.send("Done Conversion")
+            await websocket.send_text("Done Conversion")
 
             break
 
@@ -176,6 +179,8 @@ async def text_to_audio(websocket: WebSocket):
         
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
         await websocket.close()
 
 
@@ -194,11 +199,13 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
             #get zip file
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)
 
             data = CustomData(file_lines, eng_hps,'en')
             
@@ -212,7 +219,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_files.append(audio_data)                
 
         
-            websocket.send("Done Conversion")
+            websocket.send_text("Done Conversion")
             break
 
         
@@ -236,10 +243,13 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")
+            #get zip file
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'rw')
             
@@ -252,7 +262,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = rw_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send("Done Conversion")                
+            websocket.send_text("Done Conversion")                
 
 
 
@@ -273,10 +283,13 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")
+            #get zip file
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'rw')
             
@@ -289,7 +302,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = rw_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send("Done Conversion")          
+            websocket.send_text("Done Conversion")          
 
 
 
@@ -305,21 +318,20 @@ async def text_to_audio(websocket: WebSocket):
 @app.websocket("/french/cpu")
 async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
-
-
     audio_files = []
-
-
 
     try:
         while True:
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")
+            #get zip file
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'fr')
             
@@ -332,7 +344,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = fr_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send("Done Conversion")                
+            websocket.send_text("Done Conversion")                
 
 
 
@@ -358,10 +370,13 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")
+            #get zip file
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'fr')
             
@@ -374,7 +389,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = fr_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send("Done Conversion")                
+            websocket.send_text("Done Conversion")                
 
 
 
@@ -399,10 +414,13 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")
+            #get zip file
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)
 
             data = CustomData(file_lines, vctk_hps,'vctk')
             
@@ -415,7 +433,7 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
                     audio_data = vctk_gpu(stn_tst,vctk_gpu_model,vctk_hps)
                     audio_files.append(audio_data)                
 
-            websocket.send("Done Conversion")
+            websocket.send_text("Done Conversion")
 
             break
 
@@ -437,10 +455,13 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
             data = await websocket.receive_text()
 
 
-            url_zip = data.replace("URL:", "")
+            url_zip = data
+            print(url_zip)
             
-            extract_zip(url_zip,  f"./{url_zip}")
-            file_lines = read_text_files(f"./{url_zip}")
+            #get zip file
+            path = extract_zip(url_zip)
+            file_lines = read_text_files(f"./{path}")
+            print(file_lines)
 
             data = CustomData(file_lines, vctk_hps,'vctk')
             
@@ -453,7 +474,7 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
                     audio_data = vctk_cpu(stn_tst,vctk_gpu_model,vctk_hps)
                     audio_files.append(audio_data)                
 
-            websocket.send("Done Conversion")
+            websocket.send_text("Done Conversion")
 
             break
 
