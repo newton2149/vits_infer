@@ -15,11 +15,24 @@ from tqdm import tqdm
 from data import CustomData
 import zipfile
 from torch.utils.data import  DataLoader
-from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu,ENGLISH_MODEL,KIN_MODEL,FR_MODEL,VCTK_MODEL,eng_hps,vctk_hps,rw_hps,fr_hps
+from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu, ENGLISH_MODEL, KIN_MODEL, FR_MODEL, VCTK_MODEL, eng_hps, vctk_hps, rw_hps, fr_hps, fr_get_audio_gpu, fr_get_audio_cpu
 
 
 
 GPU = torch.cuda.is_available()
+
+def extract_zip(zip_file_path, extract_to):
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+
+def read_text_files(extract_to):
+    for root, dirs, files in os.walk(extract_to):
+        for file in files:
+            if file.endswith('.txt'):
+                file_path = os.path.join(root, file)
+                with open(file_path, 'r', encoding='utf-8') as text_file:
+                    content = text_file.readlines()
+                    return content
 
 
 
@@ -51,24 +64,24 @@ _ = utils.load_checkpoint(ENGLISH_MODEL, net_g, None)
 
 #French -----------------------------------------------------
 
-# if GPU:
-#     fr_gpu = SynthesizerTrn(
-#         len(fr_symbols),
-#         fr_hps.data.filter_length // 2 + 1,
-#         fr_hps.train.segment_size // fr_hps.data.hop_length,
-#         **fr_hps.model
-#     ).cuda()
-#     _ = fr_gpu.eval()
-#     _ = utils.load_checkpoint(FR_MODEL, fr_gpu, None)
+if GPU:
+    fr_gpu = SynthesizerTrn(
+        len(fr_symbols),
+        fr_hps.data.filter_length // 2 + 1,
+        fr_hps.train.segment_size // fr_hps.data.hop_length,
+        **fr_hps.model
+    ).cuda()
+    _ = fr_gpu.eval()
+    _ = utils.load_checkpoint(FR_MODEL, fr_gpu, None)
 
-# fr_cpu = SynthesizerTrn(
-#     len(fr_symbols),
-#     fr_hps.data.filter_length // 2 + 1,
-#     fr_hps.train.segment_size // fr_hps.data.hop_length,
-#     **fr_hps.model
-# ).cpu()
-# _ = net_g.eval()
-# _ = utils.load_checkpoint(FR_MODEL, fr_cpu, None)
+fr_cpu = SynthesizerTrn(
+    len(fr_symbols),
+    fr_hps.data.filter_length // 2 + 1,
+    fr_hps.train.segment_size // fr_hps.data.hop_length,
+    **fr_hps.model
+).cpu()
+_ = net_g.eval()
+_ = utils.load_checkpoint(FR_MODEL, fr_cpu, None)
 
 #Kinyarwanda -----------------------------------------------------
 
@@ -125,28 +138,29 @@ max_threads = os.cpu_count()
 
 
 
-@app.websocket("/english/gpu")
+@app.websocket("/english/ljspeech/gpu")
 async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
 
 
     audio_files = []
-
-
-
     try:
         while True:
             data = await websocket.receive_text()
 
 
-            file_data = data.replace("FILE:", "")
-            file_lines = file_data.split("\n")
-            print(len(file_lines))
-
-            data = CustomData(file_lines, eng_hps)
+            url_zip = data.replace("URL:", "")
+            
+            #get zip file
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")          
+                    
             
 
-            data_loader = data_loader = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
+            data = CustomData(file_lines, eng_hps,'en')
+            
+
+            data_loader  = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
 
             for id,stn_tst, in tqdm(data_loader):
                 print(id)
@@ -154,16 +168,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = get_audio(stn_tst,net_g_gpu,eng_hps)
                     audio_files.append(audio_data)                
 
-            with zipfile.ZipFile("audio_gpu.zip", "w") as zip_file:
-                for idx, audio_data in enumerate(audio_files):
-                    zip_file.writestr(f"audio_{idx}.wav", audio_data)
-
-            with open("audio_gpu.zip", "rb") as zip_file:
-                zip_data = zip_file.read()
-            await websocket.send_bytes(zip_data)
-
-            #delete zip file
-            os.remove("audio_gpu.zip")
+            websocket.send("Done Conversion")
 
             break
 
@@ -175,7 +180,7 @@ async def text_to_audio(websocket: WebSocket):
 
 
 
-@app.websocket("/english/cpu")
+@app.websocket("/english/ljspeech/cpu")
 async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
 
@@ -189,14 +194,16 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            file_data = data.replace("FILE:", "")
-            file_lines = file_data.split("\n")
-            print(len(file_lines))
+            url_zip = data.replace("URL:", "")
+            
+            #get zip file
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")
 
-            data = CustomData(file_lines, eng_hps)
+            data = CustomData(file_lines, eng_hps,'en')
             
 
-            data_loader = data_loader = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
+            data_loader  = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
 
             for id,stn_tst, in tqdm(data_loader):
                 print(id)
@@ -204,17 +211,8 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = get_audio_cpu(stn_tst,net_g,eng_hps)
                     audio_files.append(audio_data)                
 
-            with zipfile.ZipFile("audio_gpu.zip", "w") as zip_file:
-                for idx, audio_data in enumerate(audio_files):
-                    zip_file.writestr(f"audio_{idx}.wav", audio_data)
-
-            with open("audio_gpu.zip", "rb") as zip_file:
-                zip_data = zip_file.read()
-            await websocket.send_bytes(zip_data)
-
-            #delete zip file
-            os.remove("audio_gpu.zip")
-
+        
+            websocket.send("Done Conversion")
             break
 
         
@@ -238,31 +236,25 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            file_data = data.replace("FILE:", "")
-            file_lines = file_data.split("\n")
-            print(len(file_lines))
+            url_zip = data.replace("URL:", "")
+            
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")
 
-            data = CustomData(file_lines, rw_hps)
+            data = CustomData(file_lines, rw_hps,'rw')
             
 
-            data_loader = data_loader = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
+            data_loader  = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
 
             for id,stn_tst, in tqdm(data_loader):
                 print(id)
                 for stn_tst in stn_tst:
-                    audio_data = get_audio(stn_tst,rw_gpu,rw_hps)
-                    audio_files.append(audio_data)                
+                    audio_data = rw_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
+                    audio_files.append(audio_data)
+                    
+            websocket.send("Done Conversion")                
 
-            with zipfile.ZipFile("audio_gpu.zip", "w") as zip_file:
-                for idx, audio_data in enumerate(audio_files):
-                    zip_file.writestr(f"audio_{idx}.wav", audio_data)
 
-            with open("audio_gpu.zip", "rb") as zip_file:
-                zip_data = zip_file.read()
-            await websocket.send_bytes(zip_data)
-
-            #delete zip file
-            os.remove("audio_gpu.zip")
 
             break
 
@@ -272,9 +264,45 @@ async def text_to_audio(websocket: WebSocket):
         print(f"Error: {e}")
         await websocket.close()
 
+@app.websocket("/rw/cpu")
+async def text_to_audio(websocket: WebSocket):
+    await websocket.accept()
+    audio_files = []
+    try:
+        while True:
+            data = await websocket.receive_text()
 
 
-@app.websocket("/vctk/gpu")
+            url_zip = data.replace("URL:", "")
+            
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")
+
+            data = CustomData(file_lines, rw_hps,'rw')
+            
+
+            data_loader  = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
+
+            for id,stn_tst, in tqdm(data_loader):
+                print(id)
+                for stn_tst in stn_tst:
+                    audio_data = rw_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
+                    audio_files.append(audio_data)
+                    
+            websocket.send("Done Conversion")          
+
+
+
+            break
+
+        
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close()
+        
+        
+@app.websocket("/french/cpu")
 async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
 
@@ -288,31 +316,25 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            file_data = data.replace("FILE:", "")
-            file_lines = file_data.split("\n")
-            print(len(file_lines))
+            url_zip = data.replace("URL:", "")
+            
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")
 
-            data = CustomData(file_lines, vctk_hps)
+            data = CustomData(file_lines, rw_hps,'fr')
             
 
-            data_loader = data_loader = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
+            data_loader  = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
 
             for id,stn_tst, in tqdm(data_loader):
                 print(id)
                 for stn_tst in stn_tst:
-                    audio_data = get_audio_cpu(stn_tst,vctk_gpu_model,vctk_hps)
-                    audio_files.append(audio_data)                
+                    audio_data = fr_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
+                    audio_files.append(audio_data)
+                    
+            websocket.send("Done Conversion")                
 
-            with zipfile.ZipFile("audio_gpu.zip", "w") as zip_file:
-                for idx, audio_data in enumerate(audio_files):
-                    zip_file.writestr(f"audio_{idx}.wav", audio_data)
 
-            with open("audio_gpu.zip", "rb") as zip_file:
-                zip_data = zip_file.read()
-            await websocket.send_bytes(zip_data)
-
-            #delete zip file
-            os.remove("audio_gpu.zip")
 
             break
 
@@ -321,8 +343,8 @@ async def text_to_audio(websocket: WebSocket):
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()
-
-@app.websocket("/vctk/cpu")
+        
+@app.websocket("/french/gpu")
 async def text_to_audio(websocket: WebSocket):
     await websocket.accept()
 
@@ -336,11 +358,91 @@ async def text_to_audio(websocket: WebSocket):
             data = await websocket.receive_text()
 
 
-            file_data = data.replace("FILE:", "")
-            file_lines = file_data.split("\n")
-            print(len(file_lines))
+            url_zip = data.replace("URL:", "")
+            
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")
 
-            data = CustomData(file_lines, vctk_hps)
+            data = CustomData(file_lines, rw_hps,'fr')
+            
+
+            data_loader  = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
+
+            for id,stn_tst, in tqdm(data_loader):
+                print(id)
+                for stn_tst in stn_tst:
+                    audio_data = fr_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
+                    audio_files.append(audio_data)
+                    
+            websocket.send("Done Conversion")                
+
+
+
+            break
+
+        
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close()
+        
+        
+@app.websocket("/vctk/gpu/{spk}/{noise_scale}")
+async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float = 0.667):
+    await websocket.accept()
+
+
+    audio_files = []
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+
+
+            url_zip = data.replace("URL:", "")
+            
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")
+
+            data = CustomData(file_lines, vctk_hps,'vctk')
+            
+
+            data_loader = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
+
+            for id,stn_tst, in tqdm(data_loader):
+                print(id)
+                for stn_tst in stn_tst:
+                    audio_data = vctk_gpu(stn_tst,vctk_gpu_model,vctk_hps)
+                    audio_files.append(audio_data)                
+
+            websocket.send("Done Conversion")
+
+            break
+
+        
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close()
+
+@app.websocket("/vctk/cpu/{spk}/{noise_scale}")
+async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float = 0.667):
+    await websocket.accept()
+
+
+    audio_files = []
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+
+
+            url_zip = data.replace("URL:", "")
+            
+            extract_zip(url_zip,  f"./{url_zip}")
+            file_lines = read_text_files(f"./{url_zip}")
+
+            data = CustomData(file_lines, vctk_hps,'vctk')
             
 
             data_loader = data_loader = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
@@ -348,19 +450,10 @@ async def text_to_audio(websocket: WebSocket):
             for id,stn_tst, in tqdm(data_loader):
                 print(id)
                 for stn_tst in stn_tst:
-                    audio_data = get_audio_cpu(stn_tst,vctk_cpu_model,vctk_hps)
+                    audio_data = vctk_cpu(stn_tst,vctk_gpu_model,vctk_hps)
                     audio_files.append(audio_data)                
 
-            with zipfile.ZipFile("audio_gpu.zip", "w") as zip_file:
-                for idx, audio_data in enumerate(audio_files):
-                    zip_file.writestr(f"audio_{idx}.wav", audio_data)
-
-            with open("audio_gpu.zip", "rb") as zip_file:
-                zip_data = zip_file.read()
-            await websocket.send_bytes(zip_data)
-
-            #delete zip file
-            os.remove("audio_gpu.zip")
+            websocket.send("Done Conversion")
 
             break
 

@@ -27,6 +27,7 @@ app = FastAPI()
 
 # English -----------------------------------------------------
 if GPU:
+    print("Using GPU")
     net_g_gpu = SynthesizerTrn(
         len(symbols),
         eng_hps.data.filter_length // 2 + 1,

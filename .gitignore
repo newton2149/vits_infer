@@ -11,6 +11,7 @@ __pycache__
 
 build
 *.c
+*.zip
 monotonic_align/monotonic_align
 
 .vscode
