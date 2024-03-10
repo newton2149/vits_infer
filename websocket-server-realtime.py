@@ -12,7 +12,7 @@ from text.vctk_symbols import symbols as vctk_symbols
 
 
 from text.rw_symbols import symbols as rw_symbols
-
+from scipy.io.wavfile import write
 
 import os
 
@@ -158,6 +158,7 @@ async def text_to_audio(websocket: WebSocket):
 
 @app.websocket("/english/vctk/gpu/{spk}/{noise_scale}")
 async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float = 0.667):
+    import random
     await websocket.accept()
     try:
         while True:
@@ -167,12 +168,15 @@ async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float =
 
             audio_data = vctk_gpu(get_text_vctk(
                 text, vctk_hps), vctk_gpu_model, vctk_hps, spk, noise_scale)
+            
             await websocket.send_bytes(audio_data)
 
             break
 
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
         await websocket.close()
 
 
@@ -193,6 +197,9 @@ async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float =
 
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+
         await websocket.close()
 
 
@@ -213,7 +220,10 @@ async def text_to_audio(websocket: WebSocket):
 
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
         await websocket.close()
+
 
 
 @app.websocket("/french/cpu")

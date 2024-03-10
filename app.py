@@ -2,7 +2,9 @@ import streamlit as st
 import asyncio
 import websockets
 import time
-
+import random
+from scipy.io.wavfile import write
+import numpy as np
 
 audio = None
 
@@ -67,7 +69,7 @@ async def vctk_send_text_real_gpu(text,spk,noise_scale):
         audio_data = await websocket.recv()
         end_time = time.time()
         runtime = end_time - start
-        print(f"VCTK CPU Text Runtime: {runtime} seconds")
+        print(f"VCTK GPU Text Runtime: {runtime} seconds")
         return audio_data
             
 async def rw_send_text_real_cpu(text):
@@ -198,6 +200,9 @@ def main():
 
 
         st.audio(audio,format='audio/mp3',sample_rate=22050)
+        if audio is not None:
+            st.download_button(label='Download Audio',data=audio,file_name=f'{random.randint(1,1000)}.wav',mime='audio/mp3')
+        
     
 
     

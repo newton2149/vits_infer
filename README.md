@@ -6,7 +6,7 @@
 
 ```sh
 
-git clone https://github.com/newton2149/vits_kinyarwanda.git
+git clone https://github.com/newton2149/vits_infer.git
 
 ```
 

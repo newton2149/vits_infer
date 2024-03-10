@@ -38,7 +38,10 @@ fr_hps = utils.get_hparams_from_file(FR_CONFIG)
 
 def get_text(text, hps):
     text_norm = text_to_sequence(text, hps.data.text_cleaners)
-    return torch.LongTensor(text_norm)
+    if hps.data.add_blank:
+        text_norm = commons.intersperse(text_norm, 0)
+    text_norm = torch.LongTensor(text_norm)
+    return text_norm
 
 def get_text_vctk(text, hps):
     text_norm = vctk_text_to_sequence(text, hps.data.text_cleaners)

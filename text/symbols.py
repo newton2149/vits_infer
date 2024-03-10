@@ -16,4 +16,3 @@ symbols = [_pad] + list(_punctuation) + list(_letters) + list(_letters_ipa) + li
 
 # Special symbol ids
 SPACE_ID = symbols.index(" ")
-

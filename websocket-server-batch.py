@@ -16,6 +16,9 @@ from data import CustomData
 import zipfile
 from torch.utils.data import  DataLoader
 from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu, ENGLISH_MODEL, KIN_MODEL, FR_MODEL, VCTK_MODEL, eng_hps, vctk_hps, rw_hps, fr_hps, fr_get_audio_gpu, fr_get_audio_cpu
+import random
+from scipy.io.wavfile import write
+
 
 
 
@@ -219,7 +222,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_files.append(audio_data)                
 
         
-            websocket.send_text("Done Conversion")
+            await websocket.send_text("Done Conversion")
             break
 
         
@@ -262,7 +265,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = rw_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send_text("Done Conversion")                
+            await websocket.send_text("Done Conversion")                
 
 
 
@@ -302,7 +305,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = rw_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send_text("Done Conversion")          
+            await websocket.send_text("Done Conversion")          
 
 
 
@@ -344,7 +347,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = fr_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send_text("Done Conversion")                
+            await websocket.send_text("Done Conversion")                
 
 
 
@@ -389,7 +392,7 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = fr_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            websocket.send_text("Done Conversion")                
+            await websocket.send_text("Done Conversion")                
 
 
 
@@ -402,7 +405,7 @@ async def text_to_audio(websocket: WebSocket):
         await websocket.close()
         
         
-@app.websocket("/vctk/gpu/{spk}/{noise_scale}")
+@app.websocket("/english/vctk/gpu/{spk}/{noise_scale}")
 async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float = 0.667):
     await websocket.accept()
 
@@ -433,7 +436,7 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
                     audio_data = vctk_gpu(stn_tst,vctk_gpu_model,vctk_hps)
                     audio_files.append(audio_data)                
 
-            websocket.send_text("Done Conversion")
+            await websocket.send_text("Done Conversion")
 
             break
 
@@ -443,7 +446,7 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
         print(f"Error: {e}")
         await websocket.close()
 
-@app.websocket("/vctk/cpu/{spk}/{noise_scale}")
+@app.websocket("/english/vctk/cpu/{spk}/{noise_scale}")
 async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float = 0.667):
     await websocket.accept()
 
@@ -472,9 +475,10 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
                 print(id)
                 for stn_tst in stn_tst:
                     audio_data = vctk_cpu(stn_tst,vctk_gpu_model,vctk_hps)
+                    write(f"./test-autio/{id}.wav",rate=vctk_hps.data.sampling_rate,data=audio_data)
                     audio_files.append(audio_data)                
 
-            websocket.send_text("Done Conversion")
+            await websocket.send_text("Done Conversion")
 
             break
 
