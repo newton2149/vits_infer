@@ -18,7 +18,8 @@ from torch.utils.data import  DataLoader
 from serverutils import get_text, get_text_vctk, get_text_fr, get_text_rw, get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu, ENGLISH_MODEL, KIN_MODEL, FR_MODEL, VCTK_MODEL, eng_hps, vctk_hps, rw_hps, fr_hps, fr_get_audio_gpu, fr_get_audio_cpu
 import random
 from scipy.io.wavfile import write
-
+import requests
+import numpy as np
 
 
 
@@ -39,6 +40,24 @@ def read_text_files(extract_to):
             file_lines = f.readlines()
             return file_lines
 
+def zip_wav_files(input_dir, output_zip):
+    with zipfile.ZipFile(output_zip, 'w') as zipf:
+        for root, _, files in os.walk(input_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, input_dir)
+                zipf.write(file_path, arcname=arcname)
+                
+def download_file_from_firebase_storage(download_url, output_file_path):
+    response = requests.get(download_url)
+    if response.status_code == 200:
+        with open(output_file_path, 'wb') as f:
+            f.write(response.content)
+        print("File downloaded successfully.")
+    else:
+        print(f"Failed to download file. Status code: {response.status_code}")
+        
+        
 
 app = FastAPI()
 
@@ -151,14 +170,19 @@ async def text_to_audio(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/ljspeech.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
             file_lines = read_text_files(f"./{path}")
+            file_lines = [lines.strip() for lines in file_lines]
             print(file_lines)          
                     
             
@@ -169,16 +193,30 @@ async def text_to_audio(websocket: WebSocket):
             data_loader  = DataLoader(data, batch_size=32, num_workers=os.cpu_count(),)
 
             for id,stn_tst, in tqdm(data_loader):
-                print(id)
-                for stn_tst in stn_tst:
-                    audio_data = get_audio(stn_tst,net_g_gpu,eng_hps)
-                    audio_files.append(audio_data)                
+                # print(stn_tst)
+                # print(id)
+                for stn in stn_tst:
+                    audio_data = get_audio(stn,net_g_gpu,eng_hps)
+                    audio_files.append(audio_data)   
+                    
+           
+                    
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
 
             await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)
+            
 
             break
-
-        
+                
         
     except Exception as e:
         print(f"Error: {e}")
@@ -200,14 +238,19 @@ async def text_to_audio(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/ljspeech.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
             file_lines = read_text_files(f"./{path}")
+            file_lines = [lines.strip() for lines in file_lines]
             print(file_lines)
 
             data = CustomData(file_lines, eng_hps,'en')
@@ -219,7 +262,21 @@ async def text_to_audio(websocket: WebSocket):
                 print(id)
                 for stn_tst in stn_tst:
                     audio_data = get_audio_cpu(stn_tst,net_g,eng_hps)
-                    audio_files.append(audio_data)                
+                    audio_files.append(audio_data)          
+                    
+            
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
+
+            await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)      
 
         
             await websocket.send_text("Done Conversion")
@@ -244,14 +301,19 @@ async def text_to_audio(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/RW.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
             file_lines = read_text_files(f"./{path}")
+            file_lines = [lines.strip() for lines in file_lines]
             print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'rw')
@@ -265,7 +327,20 @@ async def text_to_audio(websocket: WebSocket):
                     audio_data = rw_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
                     
-            await websocket.send_text("Done Conversion")                
+                    
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
+
+            await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)
+                    
 
 
 
@@ -284,14 +359,20 @@ async def text_to_audio(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/rw.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
+            
             file_lines = read_text_files(f"./{path}")
+            file_lines = [lines.strip() for lines in file_lines]
             print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'rw')
@@ -304,7 +385,21 @@ async def text_to_audio(websocket: WebSocket):
                 for stn_tst in stn_tst:
                     audio_data = rw_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
-                    
+            
+            
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
+
+            await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)
+            
             await websocket.send_text("Done Conversion")          
 
 
@@ -326,14 +421,19 @@ async def text_to_audio(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/french.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
             file_lines = read_text_files(f"./{path}")
+            file_lines = [lines.strip() for lines in file_lines]
             print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'fr')
@@ -346,6 +446,20 @@ async def text_to_audio(websocket: WebSocket):
                 for stn_tst in stn_tst:
                     audio_data = fr_get_audio_cpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
+                    
+            
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
+
+            await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)
                     
             await websocket.send_text("Done Conversion")                
 
@@ -365,20 +479,26 @@ async def text_to_audio(websocket: WebSocket):
 
 
     audio_files = []
+    
 
 
 
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/french.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
             file_lines = read_text_files(f"./{path}")
+            file_lines = [lines.strip() for lines in file_lines]
             print(file_lines)
 
             data = CustomData(file_lines, rw_hps,'fr')
@@ -391,6 +511,20 @@ async def text_to_audio(websocket: WebSocket):
                 for stn_tst in stn_tst:
                     audio_data = fr_get_audio_gpu(stn_tst,rw_gpu,rw_hps)
                     audio_files.append(audio_data)
+                    
+                    
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
+
+            await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)
                     
             await websocket.send_text("Done Conversion")                
 
@@ -415,14 +549,19 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/vctk.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
             file_lines = read_text_files(f"./{path}")
+            file_lines = [lines.strip() for lines in file_lines]
             print(file_lines)
 
             data = CustomData(file_lines, vctk_hps,'vctk')
@@ -434,9 +573,23 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
                 print(id)
                 for stn_tst in stn_tst:
                     audio_data = vctk_gpu(stn_tst,vctk_gpu_model,vctk_hps)
-                    audio_files.append(audio_data)                
+                    audio_files.append(audio_data)   
+                    
+                    
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
 
             await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)             
+
+            
 
             break
 
@@ -456,15 +609,19 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
     try:
         while True:
             data = await websocket.receive_text()
+            local = "./temp_db/vctk.zip"
 
 
             url_zip = data
-            print(url_zip)
+            download_file_from_firebase_storage(url_zip, local)
+            # print(url_zip)
             
             #get zip file
-            path = extract_zip(url_zip)
+            
+            
+            path = extract_zip(local)
             file_lines = read_text_files(f"./{path}")
-            print(file_lines)
+            file_lines = [lines.strip() for lines in file_lines]
 
             data = CustomData(file_lines, vctk_hps,'vctk')
             
@@ -476,7 +633,20 @@ async def text_to_audio(websocket: WebSocket ,  spk: int = 4, noise_scale: float
                 for stn_tst in stn_tst:
                     audio_data = vctk_cpu(stn_tst,vctk_gpu_model,vctk_hps)
                     write(f"./test-autio/{id}.wav",rate=vctk_hps.data.sampling_rate,data=audio_data)
-                    audio_files.append(audio_data)                
+                    audio_files.append(audio_data)  
+                    
+            for id,audio in enumerate(audio_files):
+                with open(f"./temp_db/generated/{id}.wav", "wb") as f:
+                    f.write(audio)
+
+            zip_wav_files("./temp_db/generated/", f"./temp_db/output/test-audio{random.randint(0,1000)}.zip")
+            
+                         
+
+            await websocket.send_text("Done Conversion")
+            
+            #remove local
+            os.remove(local)              
 
             await websocket.send_text("Done Conversion")
 

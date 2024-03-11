@@ -6,7 +6,7 @@ sentence = """In the vast expanse of the cosmos, where stars twinkle like distan
 
 
 async def eng_send_text_real_cpu():
-    async with websockets.connect("ws://localhost:8000/english/ljspeech/cpu", timeout=10) as websocket:
+    async with websockets.connect(f"ws://localhost:8000/english/ljspeech/cpu/{0.667}/{0.8}/{1}", timeout=10) as websocket:
 
         text = sentence
         start = time.time()
@@ -22,7 +22,7 @@ async def eng_send_text_real_cpu():
 
 
 async def eng_send_text_real_gpu():
-    async with websockets.connect("ws://localhost:8000/english/ljspeech/gpu") as websocket:
+    async with websockets.connect(f"ws://localhost:8000/english/ljspeech/gpu/{0.667}/{0.8}/{1}") as websocket:
 
         text = sentence
         start = time.time()
@@ -36,7 +36,7 @@ async def eng_send_text_real_gpu():
 
 
 async def vctk_send_text_real_cpu():
-    async with websockets.connect(f"ws://localhost:8000/english/vctk/cpu/{4}/{0.667}", timeout=10) as websocket:
+    async with websockets.connect(f"ws://localhost:8000/english/vctk/cpu/{4}/{0.667}/{0.8}/{1}", timeout=10) as websocket:
 
         text = sentence
         start = time.time()
@@ -50,7 +50,7 @@ async def vctk_send_text_real_cpu():
 
 
 async def vctk_send_text_real_gpu():
-    async with websockets.connect(f"ws://localhost:8000/english/vctk/gpu/{4}/{0.667}") as websocket:
+    async with websockets.connect(f"ws://localhost:8000/english/vctk/gpu/{4}/{0.667}/{0.8}/{1}") as websocket:
         text = sentence
         start = time.time()
         await websocket.send(text)
@@ -63,7 +63,7 @@ async def vctk_send_text_real_gpu():
 
 
 async def fr_send_text_real_cpu():
-    async with websockets.connect("ws://localhost:8000/french/cpu", timeout=10) as websocket:
+    async with websockets.connect(f"ws://localhost:8000/french/cpu/{0.667}/{0.8}/{1}", timeout=10) as websocket:
 
         text = sentence
         start = time.time()
@@ -79,7 +79,7 @@ async def fr_send_text_real_cpu():
 async def fr_send_text_real_gpu():
 
     text = "This is a test sentence."
-    async with websockets.connect("ws://localhost:8000/french/gpu") as websocket:
+    async with websockets.connect(f"ws://localhost:8000/french/gpu/{0.667}/{0.8}/{1}") as websocket:
 
         text = sentence
 
@@ -92,7 +92,7 @@ async def fr_send_text_real_gpu():
 
 
 async def rw_send_text_real_cpu():
-    async with websockets.connect("ws://localhost:8000/rw/cpu", timeout=10) as websocket:
+    async with websockets.connect(f"ws://localhost:8000/rw/cpu/{0.667}/{0.8}/{1}", timeout=10) as websocket:
 
         text = sentence
         start = time.time()
@@ -106,7 +106,7 @@ async def rw_send_text_real_cpu():
 
 
 async def rw_send_text_real_gpu():
-    async with websockets.connect("ws://localhost:8000/rw/gpu") as websocket:
+    async with websockets.connect(f"ws://localhost:8000/rw/gpu/{0.667}/{0.8}/{1}") as websocket:
 
         text = sentence
         start = time.time()

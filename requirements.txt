@@ -38,3 +38,4 @@ horology # TODO None, measure time, worth a try
 commonvoice-utils
 fastapi
 uvicorn[standard]
+websockets

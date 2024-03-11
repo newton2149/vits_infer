@@ -70,16 +70,16 @@ def get_text_rw(text, hps):
 
 
 
-def get_audio(stn_tst,net_g,hps):
+def get_audio(stn_tst,net_g,hps,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
     with torch.no_grad():
         x_tst = stn_tst.cuda().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
         audio = net_g.infer(
             x_tst,
             x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
+            noise_scale=noise_scale,
+            noise_scale_w=noise_scale_w,
+            length_scale=length_scale,
         )[0][0, 0].data.cpu().float().numpy()
 
     # Save audio to a file (temporary here, you can modify as needed)
@@ -88,16 +88,16 @@ def get_audio(stn_tst,net_g,hps):
     audio_file.seek(0)
     return audio_file.read()
 
-def get_audio_cpu(stn_tst,net_g,hps):
+def get_audio_cpu(stn_tst,net_g,hps,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
     with torch.no_grad():
         x_tst = stn_tst.cpu().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
         audio = net_g.infer(
             x_tst,
             x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
+            noise_scale=noise_scale,
+            noise_scale_w=noise_scale_w,
+            length_scale=length_scale,
         )[0][0, 0].data.cpu().float().numpy()
 
     audio_file = io.BytesIO()
@@ -106,16 +106,16 @@ def get_audio_cpu(stn_tst,net_g,hps):
     return audio_file.read()
 
 #French -----------------------------------------------------
-def fr_get_audio_gpu(stn_tst,fr_gpu,hps):
+def fr_get_audio_gpu(stn_tst,fr_gpu,hps,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
     with torch.no_grad():
         x_tst = stn_tst.cuda().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
         audio = fr_gpu.infer(
             x_tst,
             x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
+            noise_scale=noise_scale,
+            noise_scale_w=noise_scale_w,
+            length_scale=length_scale,
         )[0][0, 0].data.cpu().float().numpy()
 
     # Save audio to a file (temporary here, you can modify as needed)
@@ -124,16 +124,16 @@ def fr_get_audio_gpu(stn_tst,fr_gpu,hps):
     audio_file.seek(0)
     return audio_file.read()
 
-def fr_get_audio_cpu(stn_tst,fr_cpu,hps):
+def fr_get_audio_cpu(stn_tst,fr_cpu,hps,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
     with torch.no_grad():
         x_tst = stn_tst.cpu().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
         audio = fr_cpu.infer(
             x_tst,
             x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
+            noise_scale=noise_scale,
+            noise_scale_w=noise_scale_w,
+            length_scale=length_scale,
         )[0][0, 0].data.cpu().float().numpy()
 
     audio_file = io.BytesIO()
@@ -144,16 +144,16 @@ def fr_get_audio_cpu(stn_tst,fr_cpu,hps):
 
 #Kinyarwanda -----------------------------------------------------
 
-def rw_get_audio_gpu(stn_tst,rw_gpu,hps):
+def rw_get_audio_gpu(stn_tst,rw_gpu,hps,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
     with torch.no_grad():
         x_tst = stn_tst.cuda().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
         audio = rw_gpu.infer(
             x_tst,
             x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
+            noise_scale=noise_scale,
+            noise_scale_w=noise_scale_w,
+            length_scale=length_scale,
         )[0][0, 0].data.cpu().float().numpy()
 
     # Save audio to a file (temporary here, you can modify as needed)
@@ -162,16 +162,16 @@ def rw_get_audio_gpu(stn_tst,rw_gpu,hps):
     audio_file.seek(0)
     return audio_file.read()
 
-def rw_get_audio_cpu(stn_tst,rw_cpu,hps):
+def rw_get_audio_cpu(stn_tst,rw_cpu,hps,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
     with torch.no_grad():
         x_tst = stn_tst.cpu().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
         audio = rw_cpu.infer(
             x_tst,
             x_tst_lengths,
-            noise_scale=0.667,
-            noise_scale_w=0.8,
-            length_scale=1,
+            noise_scale=noise_scale,
+            noise_scale_w=noise_scale_w,
+            length_scale=length_scale,
         )[0][0, 0].data.cpu().float().numpy()
 
     audio_file = io.BytesIO()
@@ -181,26 +181,26 @@ def rw_get_audio_cpu(stn_tst,rw_cpu,hps):
 
 #VCTK ---------------------------------------------------------------------------
 
-def vctk_gpu(stn_tst,vctk_gpu_model,hps,spk=4,noise_scale=0.667):
+def vctk_gpu(stn_tst,vctk_gpu_model,hps,spk=4,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
 
     with torch.no_grad():
         x_tst = stn_tst.cuda().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cuda()
         sid = torch.LongTensor([spk]).cuda()
-        audio = vctk_gpu_model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale, noise_scale_w=0.8, length_scale=1)[0][0,0].data.cpu().float().numpy()
+        audio = vctk_gpu_model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale, noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0,0].data.cpu().float().numpy()
 
     audio_file = io.BytesIO()
     write(audio_file, hps.data.sampling_rate, audio)
     audio_file.seek(0)
     return audio_file.read()
 
-def vctk_cpu(stn_tst,vctk_cpu_model,hps,spk=4,noise_scale=0.667):
+def vctk_cpu(stn_tst,vctk_cpu_model,hps,spk=4,noise_scale=0.667,noise_scale_w=0.8,length_scale=1):
 
     with torch.no_grad():
         x_tst = stn_tst.cpu().unsqueeze(0)
         x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).cpu()
         sid = torch.LongTensor([spk]).cpu()
-        audio = vctk_cpu_model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale, noise_scale_w=0.8, length_scale=1)[0][0,0].data.cpu().float().numpy()
+        audio = vctk_cpu_model.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale, noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0,0].data.cpu().float().numpy()
         
     audio_file = io.BytesIO()
     write(audio_file, hps.data.sampling_rate, audio)

@@ -118,8 +118,8 @@ _ = utils.load_checkpoint(VCTK_MODEL, vctk_cpu_model, None)
 max_threads = os.cpu_count()
 
 
-@app.websocket("/english/ljspeech/gpu")
-async def text_to_audio(websocket: WebSocket):
+@app.websocket("/english/ljspeech/gpu/{noise_scale}/{noise_scale_w}/{length_scale}")
+async def text_to_audio(websocket: WebSocket,noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     await websocket.accept()
     try:
         while True:
@@ -127,7 +127,7 @@ async def text_to_audio(websocket: WebSocket):
 
             text = data
 
-            audio_data = get_audio(get_text(text, eng_hps), net_g_gpu, eng_hps)
+            audio_data = get_audio(get_text(text, eng_hps), net_g_gpu, eng_hps, noise_scale, noise_scale_w, length_scale)
             await websocket.send_bytes(audio_data)
 
             break
@@ -137,8 +137,8 @@ async def text_to_audio(websocket: WebSocket):
         await websocket.close()
 
 
-@app.websocket("/english/ljspeech/cpu")
-async def text_to_audio(websocket: WebSocket):
+@app.websocket("/english/ljspeech/cpu/{noise_scale}/{noise_scale_w}/{length_scale}")
+async def text_to_audio(websocket: WebSocket,noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     await websocket.accept()
     try:
         while True:
@@ -146,7 +146,7 @@ async def text_to_audio(websocket: WebSocket):
 
             text = data
 
-            audio_data = get_audio_cpu(get_text(text, eng_hps), net_g, eng_hps)
+            audio_data = get_audio_cpu(get_text(text, eng_hps), net_g, eng_hps, noise_scale, noise_scale_w, length_scale)
             await websocket.send_bytes(audio_data)
 
             break
@@ -156,8 +156,8 @@ async def text_to_audio(websocket: WebSocket):
         await websocket.close()
 
 
-@app.websocket("/english/vctk/gpu/{spk}/{noise_scale}")
-async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float = 0.667):
+@app.websocket("/english/vctk/gpu/{spk}/{noise_scale}/{noise_scale_w}/{length_scale}")
+async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     import random
     await websocket.accept()
     try:
@@ -167,7 +167,7 @@ async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float =
             text = data
 
             audio_data = vctk_gpu(get_text_vctk(
-                text, vctk_hps), vctk_gpu_model, vctk_hps, spk, noise_scale)
+                text, vctk_hps), vctk_gpu_model, vctk_hps, spk, noise_scale, noise_scale_w, length_scale)
             
             await websocket.send_bytes(audio_data)
 
@@ -180,8 +180,8 @@ async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float =
         await websocket.close()
 
 
-@app.websocket("/english/vctk/cpu/{spk}/{noise_scale}")
-async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float = 0.667):
+@app.websocket("/english/vctk/cpu/{spk}/{noise_scale}/{noise_scale_w}/{length_scale}")
+async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     await websocket.accept()
     try:
         while True:
@@ -190,7 +190,7 @@ async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float =
             text = data
 
             audio_data = vctk_cpu(get_text_vctk(
-                text, vctk_hps), vctk_cpu_model, vctk_hps, spk, noise_scale)
+                text, vctk_hps), vctk_cpu_model, vctk_hps, spk, noise_scale, noise_scale_w, length_scale)
             await websocket.send_bytes(audio_data)
 
             break
@@ -203,8 +203,8 @@ async def text_to_audio(websocket: WebSocket, spk: int = 4, noise_scale: float =
         await websocket.close()
 
 
-@app.websocket("/french/gpu")
-async def text_to_audio(websocket: WebSocket):
+@app.websocket("/french/gpu/{noise_scale}/{noise_scale_w}/{length_scale}")
+async def text_to_audio(websocket: WebSocket,noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     await websocket.accept()
     try:
         while True:
@@ -213,7 +213,7 @@ async def text_to_audio(websocket: WebSocket):
             text = data
 
             audio_data = fr_get_audio_gpu(
-                get_text_fr(text, fr_hps), fr_gpu, fr_hps)
+                get_text_fr(text, fr_hps), fr_gpu, fr_hps, noise_scale, noise_scale_w, length_scale)
             await websocket.send_bytes(audio_data)
 
             break
@@ -226,8 +226,8 @@ async def text_to_audio(websocket: WebSocket):
 
 
 
-@app.websocket("/french/cpu")
-async def text_to_audio(websocket: WebSocket):
+@app.websocket("/french/cpu/{noise_scale}/{noise_scale_w}/{length_scale}")
+async def text_to_audio(websocket: WebSocket,noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     await websocket.accept()
     try:
         while True:
@@ -236,7 +236,7 @@ async def text_to_audio(websocket: WebSocket):
             text = data
 
             audio_data = fr_get_audio_cpu(
-                get_text_fr(text, fr_hps), fr_cpu, fr_hps)
+                get_text_fr(text, fr_hps), fr_cpu, fr_hps, noise_scale, noise_scale_w, length_scale)
             await websocket.send_bytes(audio_data)
 
             break
@@ -246,8 +246,8 @@ async def text_to_audio(websocket: WebSocket):
         await websocket.close()
 
 
-@app.websocket("/rw/gpu")
-async def text_to_audio(websocket: WebSocket):
+@app.websocket("/rw/gpu/{noise_scale}/{noise_scale_w}/{length_scale}")
+async def text_to_audio(websocket: WebSocket,noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     await websocket.accept()
     try:
         while True:
@@ -256,7 +256,7 @@ async def text_to_audio(websocket: WebSocket):
             text = data
 
             audio_data = rw_get_audio_gpu(
-                get_text_rw(text, rw_hps), rw_gpu, rw_hps)
+                get_text_rw(text, rw_hps), rw_gpu, rw_hps,  noise_scale=noise_scale,noise_scale_w=noise_scale_w,length_scale=length_scale)
             await websocket.send_bytes(audio_data)
 
             break
@@ -267,7 +267,7 @@ async def text_to_audio(websocket: WebSocket):
 
 
 @app.websocket("/rw/cpu")
-async def text_to_audio(websocket: WebSocket):
+async def text_to_audio(websocket: WebSocket, noise_scale: float = 0.667,noise_scale_w: float = 0.8,length_scale: float = 1):
     await websocket.accept()
     try:
         while True:
@@ -276,7 +276,7 @@ async def text_to_audio(websocket: WebSocket):
             text = data
 
             audio_data = rw_get_audio_cpu(
-                get_text_rw(text, rw_hps), rw_cpu, rw_hps)
+                get_text_rw(text, rw_hps), rw_cpu, rw_hps,  noise_scale, noise_scale_w, length_scale)
             await websocket.send_bytes(audio_data)
 
             break
