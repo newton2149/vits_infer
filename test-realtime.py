@@ -65,15 +65,15 @@ async def vctk_send_text_real_gpu():
 async def fr_send_text_real_cpu():
     async with websockets.connect(f"ws://localhost:8000/french/cpu/{0.667}/{0.8}/{1}", timeout=10) as websocket:
 
-        text = sentence
+        text = "Je suis ravi de vous rencontrer."
         start = time.time()
         await websocket.send(text)
         audio_data = await websocket.recv()
         end_time = time.time()
         runtime = end_time - start
-        # print(f"French CPU Text Runtime: {runtime} seconds")
-        # with open("fr_text_real_cpu.wav", "wb") as audio_file:
-        #     audio_file.write(audio_data)
+        print(f"French CPU Text Runtime: {runtime} seconds")
+        with open("fr_text_real_cpu.wav", "wb") as audio_file:
+            audio_file.write(audio_data)
 
 
 async def fr_send_text_real_gpu():
@@ -100,9 +100,9 @@ async def rw_send_text_real_cpu():
         audio_data = await websocket.recv()
         end_time = time.time()
         runtime = end_time - start
-        # print(f"Kinyarwanda CPU Text Runtime: {runtime} seconds")
-        # with open("rw_text_real_cpu.wav", "wb") as audio_file:
-        #     audio_file.write(audio_data)
+        print(f"Kinyarwanda CPU Text Runtime: {runtime} seconds")
+        with open("rw_text_real_cpu.wav", "wb") as audio_file:
+            audio_file.write(audio_data)
 
 
 async def rw_send_text_real_gpu():
@@ -114,9 +114,9 @@ async def rw_send_text_real_gpu():
         audio_data = await websocket.recv()
         end_time = time.time()
         runtime = end_time - start
-        # print(f"Kinyarwanda GPU Text Runtime: {runtime} seconds")
-        # with open("rw_text_real_gpu.wav", "wb") as audio_file:
-        #     audio_file.write(audio_data)
+        print(f"Kinyarwanda GPU Text Runtime: {runtime} seconds")
+        with open("rw_text_real_gpu.wav", "wb") as audio_file:
+            audio_file.write(audio_data)
 
 
 # audio = asyncio.get_event_loop().run_until_complete(eng_send_text_real_cpu())
@@ -127,7 +127,7 @@ async def rw_send_text_real_gpu():
 # asyncio.get_event_loop().run_until_complete(eng_send_text_real_gpu())
 # asyncio.get_event_loop().run_until_complete(vctk_send_text_real_cpu())
 # asyncio.get_event_loop().run_until_complete(vctk_send_text_real_gpu())
-# asyncio.get_event_loop().run_until_complete(fr_send_text_real_cpu())
-asyncio.get_event_loop().run_until_complete(fr_send_text_real_gpu())
+asyncio.get_event_loop().run_until_complete(fr_send_text_real_cpu())
+# asyncio.get_event_loop().run_until_complete(fr_send_text_real_gpu())
 # asyncio.get_event_loop().run_until_complete(rw_send_text_real_cpu())
 # asyncio.get_event_loop().run_until_complete(rw_send_text_real_gpu())

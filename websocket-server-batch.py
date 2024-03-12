@@ -25,6 +25,11 @@ import numpy as np
 
 GPU = torch.cuda.is_available()
 
+os.makedirs("temp_db", exist_ok=True)
+os.makedirs("temp_db/generated", exist_ok=True)
+os.makedirs("temp_db/output", exist_ok=True)
+
+
 def extract_zip(zip_file_path, extract_to='inference_db'):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
 
