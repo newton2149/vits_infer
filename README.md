@@ -37,3 +37,16 @@ python3 app.py
 
 ```
 ##### You Can obtain either the audio file or a audio_files.zip if you send a text file
+
+
+#### Batch (Inference Code )
+```sh
+python3 server-batch.py
+# open another terminal and run
+python3 test-batch-server.py
+
+#Use Swagger UI
+http://localhost:8001/docs
+
+```
+##### Output File Response
