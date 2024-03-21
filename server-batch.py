@@ -199,6 +199,7 @@ async def english_ljspeech_gpu(text_request: TextRequest):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = get_audio(
                 stn, net_g_gpu, eng_hps, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
@@ -236,6 +237,7 @@ async def english_ljspeech_cpu(text_request: TextRequest):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = get_audio_cpu(
                 stn, net_g, eng_hps, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
@@ -272,6 +274,7 @@ async def french_cpu(text_request: TextRequest):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = fr_get_audio_cpu(
                 stn, fr_cpu, fr_hps, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
@@ -308,6 +311,7 @@ async def french_gpu(text_request: TextRequest):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = fr_get_audio_gpu(
                 stn, fr_gpu, fr_hps, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
@@ -344,6 +348,7 @@ async def rw_cpu(text_request: TextRequest):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = rw_get_audio_cpu(
                 stn, rw_gpu, rw_hps, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
@@ -380,6 +385,7 @@ async def rw_gpu(text_request: TextRequest):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = rw_get_audio_gpu(
                 stn, rw_gpu, rw_hps, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
@@ -417,6 +423,7 @@ async def english_vctk_cpu(text_request: TextRequestVctk):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = vctk_cpu(stn, vctk_gpu_model, vctk_hps,
                                   speaker_id, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
@@ -455,6 +462,7 @@ async def english_vctk_gpu(text_request: TextRequestVctk):
     audio_files = []
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
+            stn = stn[stn != -9999]
             audio_data = vctk_gpu(stn, vctk_gpu_model, vctk_hps,
                                   speaker_id, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)

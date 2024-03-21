@@ -49,7 +49,7 @@ def test_vctk_gpu()-> FileResponse:
     url = f"{base_url}/english/vctk/gpu"
     data = {
         "url":english,
-        "speaker_id":4,
+        "speaker_id":1,
         "noise_scale":0.667,
         "noise_scale_w":0.6,
         "length_scale":1,
@@ -110,13 +110,13 @@ def test_rw_cpu():
 
 
 if __name__ == "__main__":
-    response_cpu = test_english_cpu()
-    response_gpu = test_english_gpu()
-    response_vctk = test_vctk_cpu()
+    # response_cpu = test_english_cpu()
+    # response_gpu = test_english_gpu()
+    # response_vctk = test_vctk_cpu()
     response_vctk = test_vctk_gpu()
     
-    print(response_cpu)
-    print(response_gpu)
+    # print(response_cpu)
+    # print(response_gpu)
     print(response_vctk)
     
     # print(response_fr_cpu)
