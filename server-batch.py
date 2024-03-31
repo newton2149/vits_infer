@@ -1,28 +1,111 @@
 import io
 import torch
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, File, HTTPException,Depends,BackgroundTasks
 import utils
 from models import SynthesizerTrn
 from text.symbols import symbols
-
+import psycopg2
 from text.mlb_fr_symbols import symbols as fr_symbols
-
 from text.vctk_symbols import symbols as vctk_symbols
-
 from text.rw_symbols import symbols as rw_symbols
 import os
 from tqdm import tqdm
 from data import CustomData
-import zipfile
 from torch.utils.data import DataLoader
 from serverutils import (get_audio, get_audio_cpu, vctk_gpu, vctk_cpu, rw_get_audio_gpu, rw_get_audio_cpu,
-                         ENGLISH_MODEL, KIN_MODEL, FR_MODEL, VCTK_MODEL, eng_hps, vctk_hps, rw_hps, fr_hps, fr_get_audio_gpu, fr_get_audio_cpu)
+                         ENGLISH_MODEL, KIN_MODEL, FR_MODEL, VCTK_MODEL, eng_hps, vctk_hps, rw_hps, fr_hps, fr_get_audio_gpu, fr_get_audio_cpu, download_file_from_firebase_storage, extract_zip, read_text_files, zip_wav_files)
 import random
-from scipy.io.wavfile import write
-import requests
-import numpy as np
-from fastapi.responses import FileResponse
+from dotenv import load_dotenv
+
 from pydantic import BaseModel
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import storage
+from sqlalchemy import create_engine, Column, String
+from sqlalchemy.orm import sessionmaker,declarative_base
+from datetime import datetime
+import uuid
+import asyncio
+
+load_dotenv()
+
+cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIAL_FILE"))  
+firebase_admin.initialize_app(cred, {
+    'storageBucket': os.getenv("FIREBASE_STORAGE_BUCKET")  
+})
+
+
+bucket = storage.bucket()
+print("Bucket:", bucket)
+
+# Database configuration
+DB_NAME = os.getenv("DB_NAME")
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Create database if it doesn't exist
+try:
+    conn = psycopg2.connect(
+        dbname="postgres",
+        user=os.getenv("POSTGRES_USER"),
+        password=os.getenv("POSTGRES_PASSWORD"),
+        host=os.getenv("POSTGRES_HOST"),
+    )
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute(f"SELECT 1 FROM pg_database WHERE datname='{DB_NAME}';")
+    exists = cur.fetchone()
+    if not exists:
+        cur.execute(f"CREATE DATABASE {DB_NAME};")
+    cur.close()
+    conn.close()
+except psycopg2.Error as e:
+    print("Error creating database:", e)
+
+# Continue with FastAPI initialization
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+
+class Job(Base):
+    __tablename__ = "VITS_QUEUE"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    model = Column(String)
+    language = Column(String)
+    data = Column(String)
+    status = Column(String)
+    result = Column(String, nullable=True)
+    date = Column(String, default=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+
+
+Base.metadata.create_all(bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        
+        
+        
+def upload_file_to_firebase_storage(local_file_path, remote_file_path):
+    try:
+        from datetime import datetime, timedelta
+        blob = bucket.blob(remote_file_path)
+        blob.upload_from_filename(local_file_path)
+        expiration_time = datetime.utcnow() + timedelta(hours=1)
+
+        # Get the download URL
+        download_url = blob.generate_signed_url(expiration=expiration_time)
+        print("File uploaded successfully.")
+
+        return download_url
+
+    except Exception as e:
+        print("Error uploading file:", e)
+        
 
 
 app = FastAPI(
@@ -128,7 +211,7 @@ if GPU:
         **vctk_hps.model).cuda()
     _ = vctk_gpu_model.eval()
 
-    _ = utils.load_checkpoint("./models/vctk.pth", vctk_gpu_model, None)
+    _ = utils.load_checkpoint(VCTK_MODEL, vctk_gpu_model, None)
 
 
 vctk_cpu_model = SynthesizerTrn(
@@ -139,48 +222,13 @@ vctk_cpu_model = SynthesizerTrn(
     **vctk_hps.model).cpu()
 _ = vctk_cpu_model.eval()
 
-_ = utils.load_checkpoint("./models/vctk.pth", vctk_cpu_model, None)
+_ = utils.load_checkpoint(VCTK_MODEL, vctk_cpu_model, None)
 
 
 max_threads = os.cpu_count()
 
 
-def extract_zip(zip_file_path, extract_to='inference_db'):
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        os.makedirs(extract_to, exist_ok=True)
-        zip_ref.extractall(extract_to)
-        return os.path.join(extract_to, zip_ref.namelist()[0])
-
-
-def read_text_files(extract_to):
-    for file in os.listdir(extract_to):
-        with open(os.path.join(extract_to, file), 'r') as f:
-            file_lines = f.readlines()
-            return file_lines
-
-
-def zip_wav_files(input_dir, output_zip):
-    with zipfile.ZipFile(output_zip, 'w') as zipf:
-        for root, _, files in os.walk(input_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, input_dir)
-                zipf.write(file_path, arcname=arcname)
-
-
-def download_file_from_firebase_storage(download_url, output_file_path):
-    response = requests.get(download_url)
-    if response.status_code == 200:
-        with open(output_file_path, 'wb') as f:
-            f.write(response.content)
-        print("File downloaded successfully.")
-    else:
-        raise HTTPException(status_code=response.status_code,
-                            detail=f"Failed to download file. Status code: {response.status_code}")
-
-
-@app.post("/english/ljspeech/gpu")
-async def english_ljspeech_gpu(text_request: TextRequest):
+async def english_ljspeech_gpu_h(text_request: TextRequest):
     url_zip = text_request.url
     noise_scale = text_request.noise_scale
     noise_scale_w = text_request.noise_scale_w
@@ -210,15 +258,41 @@ async def english_ljspeech_gpu(text_request: TextRequest):
 
     zip_file_path = f"./temp_db/output/test-ljspeech-audio-cpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output-vits/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
+    
+    
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
+
+def perform_ljspeech_gpu(job_id: String, data: TextRequest,db):
+    response = asyncio.run(english_ljspeech_gpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
 
 
-@app.post("/english/ljspeech/cpu")
-async def english_ljspeech_cpu(text_request: TextRequest):
+@app.post("/english/ljspeech/gpu")
+async def english_ljspeech_gpu(data: TextRequest, background_tasks: BackgroundTasks,db=Depends(get_db)):
+    
+    data_string = data.model_dump_json()
 
+    job = Job(data=data_string, status="PENDING", model="lJSpeech", language="ENGLISH")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    background_tasks.add_task(perform_ljspeech_gpu, job.id, data, db)
+
+    return {"job_id": job.id, "status": job.status}
+    
+
+async def english_ljspeech_cpu_h(text_request: TextRequest):
+    
     url_zip = text_request.url
     noise_scale = text_request.noise_scale
     noise_scale_w = text_request.noise_scale_w
@@ -248,14 +322,37 @@ async def english_ljspeech_cpu(text_request: TextRequest):
 
     zip_file_path = f"./temp_db/output/ljspeech-audio-gpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
+
+def perform_ljspeech_cpu(job_id: String, data: TextRequest,db):
+    response = asyncio.run(english_ljspeech_cpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
+
+@app.post("/english/ljspeech/cpu")
+async def english_ljspeech_cpu(data: TextRequest, background_tasks: BackgroundTasks,db=Depends(get_db)):
+    
+    data_string = data.model_dump_json()
+
+    job = Job(data=data_string, status="PENDING", model="lJSpeech", language="ENGLISH")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    background_tasks.add_task(perform_ljspeech_cpu, job.id, data, db)
+
+    return {"job_id": job.id, "status": job.status}
 
 
-@app.post("/french/cpu")
-async def french_cpu(text_request: TextRequest):
+async def french_cpu_h(text_request: TextRequest):
     url_zip = text_request.url
     noise_scale = text_request.noise_scale
     noise_scale_w = text_request.noise_scale_w
@@ -285,14 +382,39 @@ async def french_cpu(text_request: TextRequest):
 
     zip_file_path = f"./temp_db/output/test-audio-french-cpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
+
+def perform_french_cpu(job_id: String, data: TextRequest,db):
+    response = asyncio.run(french_cpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
+
+    
+
+@app.post("/french/cpu")
+async def french_cpu(data: TextRequest, background_tasks: BackgroundTasks,db=Depends(get_db)):
+        
+        data_string = data.model_dump_json()
+    
+        job = Job(data=data_string, status="PENDING", model="French", language="FRENCH")
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+    
+        background_tasks.add_task(perform_french_cpu, job.id, data, db)
+    
+        return {"job_id": job.id, "status": job.status}
 
 
-@app.post("/french/gpu")
-async def french_gpu(text_request: TextRequest):
+async def french_gpu_h(text_request: TextRequest):
     url_zip = text_request.url
     noise_scale = text_request.noise_scale
     noise_scale_w = text_request.noise_scale_w
@@ -322,14 +444,37 @@ async def french_gpu(text_request: TextRequest):
 
     zip_file_path = f"./temp_db/output/test-audio-french-gpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
+
+def perform_french_gpu(job_id: String, data: TextRequest,db):
+    response = asyncio.run(french_gpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
+
+@app.post("/french/gpu")
+async def french_gpu(data: TextRequest, background_tasks: BackgroundTasks,db=Depends(get_db)   ):
+        
+        data_string = data.model_dump_json()
+    
+        job = Job(data=data_string, status="PENDING", model="French", language="FRENCH")
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+    
+        background_tasks.add_task(perform_french_gpu, job.id, data, db)
+    
+        return {"job_id": job.id, "status": job.status}
 
 
-@app.post("/rw/cpu")
-async def rw_cpu(text_request: TextRequest):
+async def rw_cpu_h(text_request: TextRequest):
     url_zip = text_request.url
     noise_scale = text_request.noise_scale
     noise_scale_w = text_request.noise_scale_w
@@ -350,7 +495,7 @@ async def rw_cpu(text_request: TextRequest):
         for stn in stn_tst:
             stn = stn[stn != -9999]
             audio_data = rw_get_audio_cpu(
-                stn, rw_gpu, rw_hps, noise_scale, noise_scale_w, length_scale)
+                stn, rw_cpu, rw_hps, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
 
     for id, audio in enumerate(audio_files):
@@ -359,14 +504,38 @@ async def rw_cpu(text_request: TextRequest):
 
     zip_file_path = f"./temp_db/output/test-audio-rw-cpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
+
+def perform_rw_cpu(job_id: String, data: TextRequest,db):
+    response = asyncio.run(rw_cpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
+
+@app.post("/rw/cpu")
+async def rw_cpu(data: TextRequest, background_tasks: BackgroundTasks,db=Depends(get_db)):
+        
+        data_string = data.model_dump_json()
+    
+        job = Job(data=data_string, status="PENDING", model="Kinyarwanda", language="KINYARWANDA")
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+    
+        background_tasks.add_task(perform_rw_cpu, job.id, data, db)
+    
+        return {"job_id": job.id, "status": job.status}
 
 
-@app.post("/rw/gpu")
-async def rw_gpu(text_request: TextRequest):
+
+async def rw_gpu_h(text_request: TextRequest):
     url_zip = text_request.url
     noise_scale = text_request.noise_scale
     noise_scale_w = text_request.noise_scale_w
@@ -396,14 +565,36 @@ async def rw_gpu(text_request: TextRequest):
 
     zip_file_path = f"./temp_db/output/test-audio-rw-gpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
+
+def perform_rw_gpu(job_id: String, data: TextRequest,db):
+    response = asyncio.run(rw_gpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
+
+@app.post("/rw/gpu")
+async def rw_gpu(data: TextRequest, background_tasks: BackgroundTasks,db=Depends(get_db)):
+    data_string = data.model_dump_json()
+
+    job = Job(data=data_string, status="PENDING", model="Kinyarwanda", language="KINYARWANDA")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    background_tasks.add_task(perform_rw_gpu, job.id, data, db)
+
+    return {"job_id": job.id, "status": job.status}
 
 
-@app.post("/english/vctk/cpu")
-async def english_vctk_cpu(text_request: TextRequestVctk):
+async def english_vctk_cpu_h(text_request: TextRequestVctk):
     url_zip = text_request.url
     noise_scale = text_request.noise_scale
     noise_scale_w = text_request.noise_scale_w
@@ -424,7 +615,7 @@ async def english_vctk_cpu(text_request: TextRequestVctk):
     for id, stn_tst in tqdm(data_loader):
         for stn in stn_tst:
             stn = stn[stn != -9999]
-            audio_data = vctk_cpu(stn, vctk_gpu_model, vctk_hps,
+            audio_data = vctk_cpu(stn, vctk_cpu_model, vctk_hps,
                                   speaker_id, noise_scale, noise_scale_w, length_scale)
             audio_files.append(audio_data)
 
@@ -434,14 +625,39 @@ async def english_vctk_cpu(text_request: TextRequestVctk):
 
     zip_file_path = f"./temp_db/output/test-audio-vctk-cpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
+
+def perform_vctk_cpu(job_id: String, data: TextRequestVctk,db):
+    response = asyncio.run(english_vctk_cpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
 
 
-@app.post("/english/vctk/gpu")
-async def english_vctk_gpu(text_request: TextRequestVctk):
+
+@app.post("/english/vctk/cpu")
+async def english_vctk_cpu(data: TextRequestVctk, background_tasks: BackgroundTasks,db=Depends(get_db)):
+    data_string = data.model_dump_json()
+
+    job = Job(data=data_string, status="PENDING", model="VCTK", language="ENGLISH")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    background_tasks.add_task(perform_vctk_cpu, job.id, data, db)
+
+    return {"job_id": job.id, "status": job.status}
+
+
+
+async def english_vctk_gpu_h(text_request: TextRequestVctk):
     url_zip = text_request.url
 
     noise_scale = text_request.noise_scale
@@ -473,11 +689,44 @@ async def english_vctk_gpu(text_request: TextRequestVctk):
 
     zip_file_path = f"./temp_db/output/test-audio-vctk-gpu{random.randint(0,1000)}.zip"
     zip_wav_files("./temp_db/generated/", zip_file_path)
+    url = upload_file_to_firebase_storage(zip_file_path, f"output/{os.path.basename(zip_file_path)}")
 
     os.remove(local_zip)
+    os.remove(zip_file_path)
 
-    return FileResponse(zip_file_path, media_type='application/zip')
+    return url
 
+
+def perform_vctk_gpu(job_id: String, data: TextRequestVctk,db):
+    response = asyncio.run(english_vctk_gpu_h(data))
+    db.query(Job).filter(Job.id == job_id).update(
+        {"status": "COMPLETED", "result": response})
+    db.commit()
+
+    return {"job_id": job_id, "status": "COMPLETED"}
+
+
+@app.post("/english/vctk/gpu")
+async def english_vctk_gpu(data: TextRequestVctk, background_tasks: BackgroundTasks,db=Depends(get_db)):
+    
+    data_string = data.model_dump_json()
+
+    job = Job(data=data_string, status="PENDING", model="VCTK", language="ENGLISH")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    background_tasks.add_task(perform_vctk_gpu, job.id, data, db)
+
+    return {"job_id": job.id, "status": job.status}
+
+
+@app.get("/jobs/{job_id}/")
+async def get_job_status(job_id: str, db=Depends(get_db)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"id": job.id, "data": job.data, "status": job.status, "result": job.result}
 
 if __name__ == "__main__":
     import uvicorn

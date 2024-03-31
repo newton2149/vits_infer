@@ -1,10 +1,12 @@
 import io
 import torch
 from text import text_to_sequence
-
+import os
+import zipfile
 from scipy.io.wavfile import write
 import utils
-
+import requests
+from fastapi import HTTPException
 from text import text_to_sequence
 
 from text.mlb_fr import text_to_sequence as fr_text_to_sequence
@@ -207,3 +209,36 @@ def vctk_cpu(stn_tst,vctk_cpu_model,hps,spk=4,noise_scale=0.667,noise_scale_w=0.
     audio_file.seek(0)
     return audio_file.read()
 
+
+def extract_zip(zip_file_path, extract_to='inference_db'):
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        os.makedirs(extract_to, exist_ok=True)
+        zip_ref.extractall(extract_to)
+        return os.path.join(extract_to, zip_ref.namelist()[0])
+
+
+def read_text_files(extract_to):
+    for file in os.listdir(extract_to):
+        with open(os.path.join(extract_to, file), 'r') as f:
+            file_lines = f.readlines()
+            return file_lines
+
+
+def zip_wav_files(input_dir, output_zip):
+    with zipfile.ZipFile(output_zip, 'w') as zipf:
+        for root, _, files in os.walk(input_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, input_dir)
+                zipf.write(file_path, arcname=arcname)
+
+
+def download_file_from_firebase_storage(download_url, output_file_path):
+    response = requests.get(download_url)
+    if response.status_code == 200:
+        with open(output_file_path, 'wb') as f:
+            f.write(response.content)
+        print("File downloaded successfully.")
+    else:
+        raise HTTPException(status_code=response.status_code,
+                            detail=f"Failed to download file. Status code: {response.status_code}")
